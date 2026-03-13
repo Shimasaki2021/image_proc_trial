@@ -1,0 +1,9 @@
+{
+    "remoteAuthority": "wsl+Ubuntu-24.04",
+    "folders": [
+        {
+            "uri": "vscode-remote://wsl+Ubuntu-24.04/home/simasaki/image_proc_trial"
+        }
+    ],
+    "settings": {}
+}
