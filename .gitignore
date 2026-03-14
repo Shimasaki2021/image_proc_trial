@@ -2,5 +2,6 @@ test.ipynb
 output/
 data/DSCF1595.JPG
 .venv/
-~$memo_imgproc_trial.xlsx
-memo_imgproc_trial.xlsx
+~$*.xlsx
+*.xlsx
+proc_ransac_c/build/
