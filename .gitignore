@@ -4,4 +4,4 @@ data/DSCF1595.JPG
 .venv/
 ~$*.xlsx
 *.xlsx
-proc_ransac_c/build/
+build/
