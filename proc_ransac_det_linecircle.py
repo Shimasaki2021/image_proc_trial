@@ -643,7 +643,7 @@ if __name__ == "__main__":
         "CIRCLE_MIN_R_TH" : 5,
 
         # 出力ディレクトリ
-        "OUTPUT_DIR" : "output",
+        "OUTPUT_DIR" : "output_py",
     }
 
     args = sys.argv
