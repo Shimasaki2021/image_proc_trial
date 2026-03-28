@@ -18,6 +18,30 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": "${command:pickArgs}"
+        },
+        {
+            // 識別名（任意の名前を指定可）
+            "name": "Debug proc_ransac_c.elf",
+
+            "type": "cppdbg",
+            "request": "launch",
+
+            // 実行するプログラム(proc_ransac_c.elf)を設定
+            //  実行時引数をargsに追加
+            //  stopAtEntry==true: main関数先頭に自動的にブレークポイントを張る
+            "program": "${workspaceFolder}/build/proc_ransac_c/proc_ransac_c.elf",
+            "args": ["${workspaceFolder}/data/test_img.jpg"],
+            "stopAtEntry": true,
+
+            // 実行ディレクトリをワークスペースディレクトリに設定
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+
+            // gdbを設定
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+
+            "externalConsole": false
         }
     ]
 }
