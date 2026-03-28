@@ -577,7 +577,7 @@ def extractEdge(img_in:np.ndarray, dbg:DebugOut) -> np.ndarray:
     # sigma = 0.33
     sigma = np.std(img_in) / 255.0 # 画素値の標準偏差を0～1に正規化
     min_val = int(max(  0, (1.0 - sigma) * med_val))
-    max_val = int(max(255, (1.0 + sigma) * med_val))
+    max_val = int(min(255, (1.0 + sigma) * med_val))
     img_edge = cv2.Canny(img_in, threshold1 = min_val, threshold2 = max_val)
 
     dbg.printLogLine(f"img_in.shape = {img_in.shape}")
