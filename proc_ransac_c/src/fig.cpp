@@ -1,0 +1,230 @@
+
+#include "fig.hpp"
+
+// === FigLine ===
+
+void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
+{
+    sel_pixels.clear();
+
+    if(pixels.size() >= 2)
+    {
+        // pixelsの中からランダムに2点を選ぶ（重複禁止）
+        std::uniform_int_distribution<size_t> dist(0, pixels.size() - 1);
+        size_t idx1, idx2;
+        cv::Point px1, px2;
+
+        idx1 = dist(rand_gen_);
+        do {
+            idx2 = dist(rand_gen_);
+        } while (idx1 == idx2); // 同じ点が選ばれたらやり直し
+
+        sel_pixels.push_back(pixels[idx1]);
+        sel_pixels.push_back(pixels[idx2]);
+    }
+
+    return;
+}
+
+bool FigLine::isEnableCreate(const CvPointList &sel_pixels) const
+{
+    bool is_enable;
+
+    is_enable = false;
+
+    if(sel_pixels.size() >= 2)
+    {
+        if(    (sel_pixels[0].x != sel_pixels[1].x)
+            || (sel_pixels[0].y != sel_pixels[1].y))
+        {
+            // [入力2点が異なる] 直線作成可
+            is_enable = true;
+        }
+    }
+    return is_enable;
+}
+
+void FigLine::create(const CvPointList &sel_pixels) 
+{
+    if(sel_pixels.size() >= 2)
+    {
+        double x0,y0;
+        double x1,y1;
+        double a,b,c;
+        double sqrt_a2_plus_b2;
+
+        x0 = (double)sel_pixels[0].x;
+        y0 = (double)sel_pixels[0].y;
+        x1 = (double)sel_pixels[1].x;
+        y1 = (double)sel_pixels[1].y;
+
+        // 直線のパラメータa,b,cを算出
+        //   直線の方向ベクトル＝(x1​−x0​, y1​−y0​)
+        //    → 直線の法線ベクトル＝(y0​−y1​,x1​−x0​)＝パラメータ(a,b)
+        a = y0 - y1;
+        b = x1 - x0;
+        c = -(a * x0 + b * y0);
+
+        sqrt_a2_plus_b2 = sqrt(a*a + b*b);
+
+        if(sqrt_a2_plus_b2 > 1e-5)
+        {
+            a_ = a;
+            b_ = b;
+            c_ = c;
+            is_valid_ = true;
+        }
+    }
+
+    return;
+}
+
+int FigLine::countInlier(const CvPointList &pixels, double dist_th)
+{
+    num_inlier_ = 0;
+    inlier_pixels_.clear();
+
+    if(is_valid_ == true)
+    {
+        double dist;
+
+        // 点と直線の距離 < 閾値 を満たす点の数をカウント
+        for(const auto &px : pixels)
+        {
+            dist = std::abs(a_ * (double)px.x + b_ * (double)px.y + c_) / sqrt_a2_plus_b2_;
+
+            if(dist < dist_th)
+            {
+                num_inlier_++;
+                inlier_pixels_.push_back(px);
+            }
+        }
+
+        if(num_inlier_ > min_inlier_th_)
+        {
+            // inlier点群の外接矩形/線分長を算出(近似)
+
+            // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
+        }
+    }
+
+    return num_inlier_;
+}
+
+// === FigCircle ===
+
+void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
+{
+    sel_pixels.clear();
+
+    if(pixels.size() >= 3)
+    {
+        // pixelsの中からランダムに3点を選ぶ（重複禁止）
+        std::uniform_int_distribution<size_t> dist(0, pixels.size() - 1);
+        size_t idx1, idx2, idx3;
+        cv::Point px1, px2, px3;
+        
+        idx1 = dist(rand_gen_);
+        do {
+            idx2 = dist(rand_gen_);
+            idx3 = dist(rand_gen_);
+        } while ((idx1 == idx2) || (idx1 == idx3) || (idx2 == idx3)); // 同じ点が選ばれたらやり直し
+
+        sel_pixels.push_back(pixels[idx1]);
+        sel_pixels.push_back(pixels[idx2]);
+        sel_pixels.push_back(pixels[idx3]);
+    }
+
+    return;
+}
+
+bool FigCircle::isEnableCreate(const CvPointList &sel_pixels) const
+{
+    bool is_enable;
+
+    is_enable = false;
+
+    if(sel_pixels.size() >= 3)
+    {
+        // 3点が一直線上にあるかどうかを判定
+        //   → 3点で形成される三角形の面積が0かどうかで判定
+        //   → 2ベクトルの外積が0かどうかで判定
+        int x0,y0;
+        int x1,y1;
+        int x2,y2;
+        int cross;
+
+        x0 = sel_pixels[0].x; 
+        y0 = sel_pixels[0].y;
+        x1 = sel_pixels[1].x; 
+        y1 = sel_pixels[1].y;
+        x2 = sel_pixels[2].x; 
+        y2 = sel_pixels[2].y;
+        cross = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
+        
+        if(abs(cross) != 0)
+        {
+            // [入力3点が一直線上に存在しない] 円作成可
+            is_enable = true;
+        }
+    }
+    return is_enable;
+}
+
+void FigCircle::create(const CvPointList &sel_pixels) 
+{
+    if(sel_pixels.size() >= 3)
+    {
+        double x0,y0;
+        double x1,y1;
+        double x2,y2;
+        double detA;
+        double b0,b1,b2;
+        double a,b,c;
+        double cx,cy,r;
+
+        x0 = (double)sel_pixels[0].x;
+        y0 = (double)sel_pixels[0].y;
+        x1 = (double)sel_pixels[1].x;
+        y1 = (double)sel_pixels[1].y;
+        x2 = (double)sel_pixels[2].x;
+        y2 = (double)sel_pixels[2].y;
+
+        // 円のパラメータa,b,cを算出(x^2 + y^2 + ax + by + c = 0)
+        //   → 連立方程式AP=Bを解く。P=[a,b,c]
+
+        // 行列式の計算 (サラスの方法)
+        double detA = x0 * (y1 - y2) - y0 * (x1 - x2) + (x1 * y2 - x2 * y1);
+
+        if(std::abs(detA) > 1e-5)
+        {
+            b0 = -(x0 * x0 + y0 * y0);
+            b1 = -(x1 * x1 + y1 * y1);
+            b2 = -(x2 * x2 + y2 * y2);
+
+            // クラメルの公式で a, b, c を算出
+            a = (b0 * (y1 - y2) - y0 * (b1 - b2) + (b1 * y2 - b2 * y1)) / detA;
+            b = (x0 * (b1 - b2) - b0 * (x1 - x2) + (x1 * b2 - x2 * b1)) / detA;
+            c = (x0 * (y1 * b2 - y2 * b1) - y0 * (x1 * b2 - x2 * b1) + b0 * (x1 * y2 - x2 * y1)) / detA;
+
+            // a,b,cから中心(cx,cy), 半径rを算出
+            cx = -a / 2.0;
+            cy = -b / 2.0;
+            r = std::sqrt(cx * cx + cy * cy - c);
+
+            if(min_r_th_ < r)
+            {
+                a_ = a;
+                b_ = b;
+                c_ = c;
+                center_.x = (int)cx;
+                center_.y = (int)cy;
+                r_ = (int)r;
+
+                is_valid_ = true;
+            }
+        }
+    }
+
+    return;
+}

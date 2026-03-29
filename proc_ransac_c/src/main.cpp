@@ -1,5 +1,103 @@
+#include <stdlib.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <vector>
+#include <map>
+#include "main.hpp"
+#include "fig.hpp"
+
+void extractObjectRANSAC(const CvPointList &edge_pixels, 
+                         FigType &target_obj_type, 
+                         std::shared_ptr<Fig> &det_obj,
+                         CfgType &cfg)
+{
+    std::shared_ptr<Fig> target_fig;
+    std::shared_ptr<Fig> best_fig;
+    int num_iter;
+    int count_iter;
+    int num_max_inlier;
+
+    if(target_obj_type.figtype_ == FigType::FIGTYPE_LINE_)
+    {
+        target_fig = std::make_shared<FigLine>(cfg);
+    }
+    else
+    {
+        target_fig = std::make_shared<FigCircle>(cfg);
+    }
+
+    num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
+
+    num_max_inlier = 0;
+    (*best_fig) = (*target_fig);
+    count_iter = 0;
+
+    while(count_iter < num_iter)
+    {
+        CvPointList choise_pixels;
+
+        target_fig->reset();
+
+        // エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
+        target_fig->choiseRandomPixels(edge_pixels, choise_pixels);
+
+        if(target_fig->isEnableCreate(choise_pixels) == true)
+        {
+            // 抽出した点から直線／円を作成
+            target_fig->create(choise_pixels);
+
+            // 作成した直線／円周上の点の数（inlier）をカウント
+        }
+    }
+
+    return;
+}
+
+void extractObjects(cv::Mat &img_edge, 
+                    FigList &det_objs, 
+                    CfgType &cfg)
+{
+    FigType target_obj_type;
+    CvPointList edge_pixels;
+
+    det_objs.clear();
+
+    while(false == target_obj_type.isNone())
+    {
+        int len_edge_pixels;
+        std::shared_ptr<Fig> det_obj(nullptr);
+
+        // エッジ画像からエッジ点群を抽出
+        cv::findNonZero(img_edge, edge_pixels);
+        len_edge_pixels = edge_pixels.size();
+
+        if(len_edge_pixels <= 0)
+        {
+            break;
+        }
+
+        // エッジ点群から直線／円を1つ検出
+        extractObjectRANSAC(edge_pixels, target_obj_type, det_obj, cfg);
+
+        if((det_obj != nullptr) && (det_obj->is_valid_ == true))
+        {
+            // [検出できた場合] 
+            det_objs.push_back(det_obj);
+
+            // 検出した直線／円に含まれるエッジ点(inlier点)を削除し、
+            // 同じ種別の図形検出を継続
+            det_obj->erasePixels(img_edge);
+
+        }
+        else
+        {
+            // [検出できなかった場合] 次の種別の検出図形へ
+            target_obj_type.next();
+        }
+    }
+
+    return;
+}
 
 double calculateMedian(const cv::Mat& src) 
 {
@@ -32,7 +130,29 @@ void extractEdge(const cv::Mat &img_in_g, cv::Mat &img_edge)
 
 int main(int argc, char *argv[]) 
 {
+    CfgType cfg = 
+    {
+        // RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
+        {"RANSAC_NUM_ITER_PER_EDGE", "1.5"},
+
+        // 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
+        {"INLIER_DIST_TH", "1.0"},
+
+        // inlier点群の数の下限閾値[pixel]
+        {"INLIER_NUM_MIN_TH", "10"},
+
+        // inlier点群の密度(0～1)閾値
+        {"INLIER_LINE_DENSE_TH", "0.5"},    // 直線
+        {"INLIER_CIRCLE_DENSE_TH", "0.5"},  // 円
+
+        // 円の最小半径[pixel]
+        {"CIRCLE_MIN_R_TH", "5"},
+
+        // 出力ディレクトリ
+        {"OUTPUT_DIR", "output_cpp"},
+    };
     int ret;
+    
 
     if(argc < 2)
     {

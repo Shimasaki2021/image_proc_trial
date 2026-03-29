@@ -16,9 +16,15 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall")
 # リリースビルド用オプション
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
 
+# includeパス追加
+include_directories(${OpenCV_INCLUDE_DIRS}
+                    include)
+
 # 実行ファイルの追加
 add_executable(proc_ransac_c.elf 
-               src/main.cpp)
+               src/main.cpp
+               src/fig.cpp)
 
 # OpenCVのライブラリをリンク
-target_link_libraries(proc_ransac_c.elf ${OpenCV_LIBS})
+target_link_libraries(proc_ransac_c.elf 
+                      ${OpenCV_LIBS})
