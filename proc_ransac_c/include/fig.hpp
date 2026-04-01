@@ -97,6 +97,7 @@ public:
     }
 
     void erasePixels(cv::Mat &img) const;
+    
     virtual void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
     {
         return;
@@ -141,11 +142,18 @@ public:
     bool isEnableCreate(const CvPointList &sel_pixels) const;
     void create(const CvPointList &sel_pixels);
     int countInlier(const CvPointList &pixels, double dist_th);
+    void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
+    int calcLineseg(const cv::Point &bbox_min, const cv::Point &bbox_max) const;
+    int densityFilter(double density_th);
 
     double a_;
     double b_;
     double c_;
     double sqrt_a2_plus_b2_;
+
+    cv::Point inlier_bbox_min_;
+    cv::Point inlier_bbox_max_;
+    int len_lineseg_;
 
 
 };
@@ -173,6 +181,7 @@ public:
     bool isEnableCreate(const CvPointList &sel_pixels) const;
     void create(const CvPointList &sel_pixels);
     int countInlier(const CvPointList &pixels, double dist_th);
+    int densityFilter(double density_th);
 
     double a_;
     double b_;

@@ -16,6 +16,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     int num_iter;
     int count_iter;
     int num_max_inlier;
+    int num_inlier;
 
     if(target_obj_type.figtype_ == FigType::FIGTYPE_LINE_)
     {
@@ -47,8 +48,20 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             target_fig->create(choise_pixels);
 
             // 作成した直線／円周上の点の数（inlier）をカウント
+            num_inlier = target_fig->countInlier(edge_pixels, target_fig->dist_th_);
+
+            if(num_inlier > num_max_inlier)
+            {
+                num_max_inlier = num_inlier;
+                (*best_fig) = (*target_fig);
+            }
+
+            count_iter++;
         }
     }
+
+    // inlier数最大の直線／円を返す
+    (*det_obj) = (*best_fig);
 
     return;
 }

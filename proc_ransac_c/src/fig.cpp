@@ -1,6 +1,22 @@
 
 #include "fig.hpp"
 
+// === Fig ===
+
+void Fig::erasePixels(cv::Mat &img) const
+{
+    if((is_valid_ == true) && (inlier_pixels_.size() > 0))
+    {
+        // inlier点を削除(0塗りつぶし)する
+        for(auto &px : inlier_pixels_)
+        {
+            img.at<uchar>(px.y, px.x) = 0;
+        }
+    }
+
+    return;
+}
+
 // === FigLine ===
 
 void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
@@ -103,9 +119,75 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
         if(num_inlier_ > min_inlier_th_)
         {
             // inlier点群の外接矩形/線分長を算出(近似)
+            calcInlierBBox(inlier_pixels_, inlier_bbox_min_, inlier_bbox_max_);
+            len_lineseg_ = calcLineseg(inlier_bbox_min_, inlier_bbox_max_);
 
             // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
+            num_inlier_ = densityFilter(inlier_dense_th_);
         }
+        else
+        {
+            num_inlier_ = 0;
+        }
+
+        if(num_inlier_ == 0)
+        {
+            inlier_pixels_.clear();
+        }
+    }
+
+    return num_inlier_;
+}
+
+void FigLine::calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const
+{
+    bbox_min.x = INT_MAX;
+    bbox_min.y = INT_MAX;
+    bbox_max.x = INT_MIN;
+    bbox_max.y = INT_MIN;
+
+    for(const auto &px : pixels)
+    {
+        if(px.x < bbox_min.x)
+        {
+            bbox_min.x = px.x;
+        }
+        if(px.y < bbox_min.y)
+        {
+            bbox_min.y = px.y;
+        }
+        if(bbox_max.x < px.x)
+        {
+            bbox_max.x = px.x;
+        }
+        if(bbox_max.y < px.y)
+        {
+            bbox_max.y = px.y;
+        }
+    }
+    return;
+}
+
+int FigLine::calcLineseg(const cv::Point &bbox_min, const cv::Point &bbox_max) const
+{
+    int len_lineseg;
+    int bbox_w, bbox_h;
+
+    bbox_w = bbox_max.x - bbox_min.x;
+    bbox_h = bbox_max.y - bbox_min.y;
+    len_lineseg = (bbox_w > bbox_h) ? bbox_w : bbox_h;
+
+    return len_lineseg;
+}
+
+int FigLine::densityFilter(double density_th)
+{
+    int min_inlier_th;
+    min_inlier_th = (int)(density_th * (double)len_lineseg_);
+
+    if(num_inlier_ < min_inlier_th)
+    {
+        num_inlier_ = 0;
     }
 
     return num_inlier_;
@@ -227,4 +309,75 @@ void FigCircle::create(const CvPointList &sel_pixels)
     }
 
     return;
+}
+
+int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
+{
+    num_inlier_ = 0;
+    inlier_pixels_.clear();
+
+    if(is_valid_ == true)
+    {
+        // 点と直線の距離 < 閾値 を満たす点の数をカウント
+        //    点と円周の距離＝|点と円中心の距離 - 円半径|
+
+        //    平方根計算を回避するため、判定式を以下にする
+        //      (円半径 - 閾値)^2 < 点と円中心の距離^2 < (円半径 + 閾値)^2
+        cv::Point vec_px_center;
+        double dist2;
+        double r_min2, r_max2;
+
+        r_min2  = r_ - dist_th;
+        r_min2 *= r_min2;
+
+        r_max2  = r_ + dist_th;
+        r_max2 *= r_max2;
+
+        for(const auto &px : pixels)
+        {
+            vec_px_center.x = px.x - center_.x;
+            vec_px_center.y = px.y - center_.y;
+            dist2 = (double)(vec_px_center.x * vec_px_center.x + vec_px_center.y * vec_px_center.y);
+
+            if((r_min2 < dist2) && (dist2 < r_max2))
+            {
+                num_inlier_++;
+                inlier_pixels_.push_back(px);
+            }
+        }
+
+        if(num_inlier_ > min_inlier_th_)
+        {
+            // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
+            num_inlier_ = densityFilter(inlier_dense_th_);
+        }
+        else
+        {
+            num_inlier_ = 0;
+        }
+
+        if(num_inlier_ == 0)
+        {
+            inlier_pixels_.clear();
+        }
+    }
+
+    return num_inlier_;
+}
+
+int FigCircle::densityFilter(double density_th)
+{
+    double len_circle;
+    double min_inlier_th;
+
+    len_circle = 2.0 * M_PI * (double)r_;
+
+    min_inlier_th = (int)(len_circle * density_th);
+
+    if(num_inlier_ < min_inlier_th)
+    {
+        num_inlier_ = 0;
+    }
+
+    return num_inlier_;
 }
