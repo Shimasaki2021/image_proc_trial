@@ -21,18 +21,26 @@ void Fig::erasePixels(cv::Mat &img) const
 
 void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
 {
+    size_t num_pixels;
+
+    num_pixels = pixels.size();
+
     sel_pixels.clear();
 
-    if(pixels.size() >= 2)
+    if(num_pixels >= 2)
     {
         // pixelsの中からランダムに2点を選ぶ（重複禁止）
-        std::uniform_int_distribution<size_t> dist(0, pixels.size() - 1);
+        std::random_device rd;
+        std::mt19937 rand_gen;
+        std::uniform_int_distribution<size_t> dist(0, num_pixels-1);
         size_t idx1, idx2;
         cv::Point px1, px2;
 
-        idx1 = dist(rand_gen_);
+        rand_gen = std::mt19937(rd());
+
+        idx1 = dist(rand_gen);
         do {
-            idx2 = dist(rand_gen_);
+            idx2 = dist(rand_gen);
         } while (idx1 == idx2); // 同じ点が選ばれたらやり直し
 
         sel_pixels.push_back(pixels[idx1]);
@@ -197,19 +205,27 @@ int FigLine::densityFilter(double density_th)
 
 void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
 {
+    size_t num_pixels;
+
+    num_pixels = pixels.size();
+
     sel_pixels.clear();
 
-    if(pixels.size() >= 3)
+    if(num_pixels >= 3)
     {
         // pixelsの中からランダムに3点を選ぶ（重複禁止）
-        std::uniform_int_distribution<size_t> dist(0, pixels.size() - 1);
+        std::random_device rd;
+        std::mt19937 rand_gen;
+        std::uniform_int_distribution<size_t> dist(0, num_pixels-1);
         size_t idx1, idx2, idx3;
         cv::Point px1, px2, px3;
         
-        idx1 = dist(rand_gen_);
+        rand_gen = std::mt19937(rd());
+
+        idx1 = dist(rand_gen);
         do {
-            idx2 = dist(rand_gen_);
-            idx3 = dist(rand_gen_);
+            idx2 = dist(rand_gen);
+            idx3 = dist(rand_gen);
         } while ((idx1 == idx2) || (idx1 == idx3) || (idx2 == idx3)); // 同じ点が選ばれたらやり直し
 
         sel_pixels.push_back(pixels[idx1]);
@@ -276,7 +292,7 @@ void FigCircle::create(const CvPointList &sel_pixels)
         //   → 連立方程式AP=Bを解く。P=[a,b,c]
 
         // 行列式の計算 (サラスの方法)
-        double detA = x0 * (y1 - y2) - y0 * (x1 - x2) + (x1 * y2 - x2 * y1);
+        detA = x0 * (y1 - y2) - y0 * (x1 - x2) + (x1 * y2 - x2 * y1);
 
         if(std::abs(detA) > 1e-5)
         {

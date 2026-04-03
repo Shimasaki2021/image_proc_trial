@@ -9,6 +9,8 @@
 
 #include "main.hpp"
 
+typedef std::vector<cv::Point> CvPointList;
+
 class FigType
 {
 public:
@@ -72,9 +74,6 @@ class Fig
 public:
     Fig(CfgType &cfg) 
     {
-        std::random_device rd;
-        rand_gen_ = std::mt19937(rd());
-
         is_valid_ = false;
         num_inlier_ = 0;
         inlier_dense_th_ = 0.0;
@@ -117,7 +116,6 @@ public:
 
     bool is_valid_;
     int  num_inlier_;
-    std::mt19937 rand_gen_;
     CvPointList inlier_pixels_;
 
     double inlier_dense_th_;
@@ -196,6 +194,5 @@ public:
 };
 
 typedef std::vector<std::shared_ptr<Fig>> FigList;
-typedef std::vector<cv::Point> CvPointList;
 
 #endif // _FIG_HPP_

@@ -41,7 +41,11 @@ void DebugOut::openLogFile(const char *fname)
     closeLogFile();
     if(is_out_ == true)
     {
-        log_fp_.open(std::string(fname), std::ios::out);
+        std::string fpath;
+        createOutdir();
+
+        fpath = outdir_ + "/" + std::string(fname);
+        log_fp_.open(fpath, std::ios::out);
     }
 
     return;

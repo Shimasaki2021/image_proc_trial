@@ -2,6 +2,7 @@
 #define _DEBUG_HPP_
 
 #include <stdio.h>
+#include <fstream>
 #include <opencv2/opencv.hpp>
 
 class DebugOut

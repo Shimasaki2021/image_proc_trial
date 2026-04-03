@@ -3,8 +3,10 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <filesystem>
 #include "main.hpp"
 #include "fig.hpp"
+#include "debug.hpp"
 
 void extractObjectRANSAC(const CvPointList &edge_pixels, 
                          FigType &target_obj_type, 
@@ -119,10 +121,11 @@ double calculateMedian(const cv::Mat& src)
     std::vector<int> vec;
     flat.copyTo(vec);
     std::sort(vec.begin(), vec.end()); // ソート
+
     return vec[vec.size() / 2]; // 中央値を取得
 }
 
-void extractEdge(const cv::Mat &img_in_g, cv::Mat &img_edge)
+void extractEdge(const cv::Mat &img_in_g, cv::Mat &img_edge, DebugOut &dbg)
 {
     // https://qiita.com/kotai2003/items/662c33c15915f2a8517e
     cv::Scalar mean_val, sigma_val;
@@ -136,8 +139,10 @@ void extractEdge(const cv::Mat &img_in_g, cv::Mat &img_edge)
     max_val = (int)std::min(255.0, (1.0 + sigma) * med_val);
 
     cv::Canny(img_in_g, img_edge, min_val, max_val);
-    printf("img_out(%d %d) = cv.Canny(img_in_g, img_edge, %d, %d)\n", 
+
+    dbg.printLogLine("img_out(%d %d) = cv.Canny(img_in_g, img_edge, %d, %d)", 
         img_edge.cols, img_edge.rows, min_val, max_val);
+
     return;
 }
 
@@ -174,15 +179,34 @@ int main(int argc, char *argv[])
     }
     else
     {
-        const char *p_img_file;
+        const char *img_fpath;
         cv::Mat img_in, img_in_g, img_edge;
+        std::filesystem::path fpath;
+        std::string img_fname, img_fname_base;
 
-        p_img_file = argv[1];
-        img_in = cv::imread(p_img_file);
+        img_fpath = argv[1];
+        img_in = cv::imread(img_fpath);
+
+        fpath = std::filesystem::path(img_fpath);
+        img_fname = fpath.filename().string();
+        img_fname_base = fpath.stem().string();
+
+        DebugOut dbg(cfg["OUTPUT_DIR"].c_str(), img_fname_base.c_str());
+        dbg.is_out_ = true;
+        dbg.openLogFile("log.txt");
 
         // エッジ検出
         cv::cvtColor(img_in, img_in_g, cv::COLOR_BGR2GRAY);
-        extractEdge(img_in_g, img_edge);
+        extractEdge(img_in_g, img_edge, dbg);
+
+        // 直線／円検出
+
+        // 検出結果を重畳描画
+
+        dbg.dumpImg(img_edge, "det");
+        dbg.printLogLine("time[sec] = %d",0);
+
+        dbg.closeLogFile();
 
         // ウィンドウに表示
         // cv::imshow("Sample Window", img_in);
