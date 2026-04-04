@@ -246,24 +246,24 @@ class FigLine(Fig):
         if math.fabs(self.a_) > 1e-5:
             y = bmin_y
             x = -(self.b_ * y + self.c_) / self.a_
-            if (bmin_x <= x) and (x <= bmax_x):
+            if ((bmin_x - 1e-5) < x) and (x < (bmax_x + 1e-5)):
                 inter_px.append([x,y])
             
             y = bmax_y
             x = -(self.b_ * y + self.c_) / self.a_
-            if (bmin_x <= x) and (x <= bmax_x):
+            if ((bmin_x - 1e-5) <= x) and (x < (bmax_x + 1e-5)):
                 inter_px.append([x,y])
 
         # 左端(x=bmin_x)/右端(x=bmax_x)との交点
         if math.fabs(self.b_) > 1e-5:
             x = bmin_x
             y = -(self.a_ * x + self.c_) / self.b_
-            if (bmin_y <= y) and (y <= bmax_y):
+            if ((bmin_y - 1e-5) < y) and (y < (bmax_y + 1e-5)):
                 inter_px.append([x,y])
             
             x = bmax_x
             y = -(self.a_ * x + self.c_) / self.b_
-            if (bmin_y <= y) and (y <= bmax_y):
+            if ((bmin_y - 1e-5) < y) and (y < (bmax_y + 1e-5)):
                 inter_px.append([x,y])
 
         return np.array(inter_px)

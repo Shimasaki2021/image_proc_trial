@@ -113,6 +113,10 @@ public:
     {
         return 0;
     }
+    virtual void draw(cv::Mat &img) const
+    {
+        return;
+    }
 
     bool is_valid_;
     int  num_inlier_;
@@ -142,7 +146,9 @@ public:
     int countInlier(const CvPointList &pixels, double dist_th);
     void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
     int calcLineseg(const cv::Point &bbox_min, const cv::Point &bbox_max) const;
+    void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     int densityFilter(double density_th);
+    void draw(cv::Mat &img) const;
 
     double a_;
     double b_;
@@ -180,6 +186,7 @@ public:
     void create(const CvPointList &sel_pixels);
     int countInlier(const CvPointList &pixels, double dist_th);
     int densityFilter(double density_th);
+    void draw(cv::Mat &img) const;
 
     double a_;
     double b_;

@@ -201,6 +201,84 @@ int FigLine::densityFilter(double density_th)
     return num_inlier_;
 }
 
+void FigLine::calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const
+{
+    double bmin_x, bmin_y, bmax_x, bmax_y;
+    double x, y;
+    
+    bmin_x = (double)bbox_min.x;
+    bmin_y = (double)bbox_min.y;
+    bmax_x = (double)bbox_max.x;
+    bmax_y = (double)bbox_max.y;
+
+    inter_px.clear();
+
+    // 上端(y=bmin_y)/下端(y=bmax_y)との交点
+    if(fabs(a_) > 1e-5)
+    {
+        y = bmin_y;
+        x = -(b_ * y + c_) / a_;
+        if(((bmin_x - 1e-5) < x) && (x < (bmax_x + 1e-5)))
+        {
+            inter_px.push_back(cv::Point((int)x, (int)y));
+        }
+
+        y = bmax_y;
+        x = -(b_ * y + c_) / a_;
+        if(((bmin_x - 1e-5) < x) && (x < (bmax_x + 1e-5)))
+        {
+            inter_px.push_back(cv::Point((int)x, (int)y));
+        }
+    }
+
+    // 左端(x=bmin_x)/右端(x=bmax_x)との交点
+    if(fabs(b_) > 1e-5)
+    {
+        x = bmin_x;
+        y = -(a_ * x + c_) / b_;
+        if(((bmin_y - 1e-5) < y) && (y < (bmax_y + 1e-5)))
+        {
+            inter_px.push_back(cv::Point((int)x, (int)y));
+        }
+
+        x = bmax_x;
+        y = -(a_ * x + c_) / b_;
+        if(((bmin_y - 1e-5) < y) && (y < (bmax_y + 1e-5)))
+        {
+            inter_px.push_back(cv::Point((int)x, (int)y));
+        }
+    }
+
+    return;
+}
+
+void FigLine::draw(cv::Mat &img) const
+{
+    const cv::Scalar COL = cv::Scalar(0,255,255);
+    const double ALPHA = 0.6;
+
+    CvPointList inter_px;
+
+    // 直線と点群の外接矩形の交点を算出
+    calcIntersectBBox(inlier_bbox_min_, inlier_bbox_max_, inter_px);
+
+    if(inter_px.size() >= 2)
+    {
+        // 直線描画
+        cv::Mat img_draw_layer;
+        
+        img_draw_layer = img.clone();
+
+        cv::line(img_draw_layer, 
+                 inter_px[0], inter_px[1],
+                 COL, 2, cv::LINE_AA);
+
+        cv::addWeighted(img_draw_layer, ALPHA, img, 1.0-ALPHA, 0.0, img);
+    }
+
+    return;
+}
+
 // === FigCircle ===
 
 void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
@@ -396,4 +474,21 @@ int FigCircle::densityFilter(double density_th)
     }
 
     return num_inlier_;
+}
+
+void FigCircle::draw(cv::Mat &img) const
+{
+    const cv::Scalar COL = cv::Scalar(0,255,255);
+    const double ALPHA = 0.6;
+
+    cv::Mat img_draw_layer;
+
+    // 円描画
+    img_draw_layer = img.clone();
+
+    cv::circle(img_draw_layer, center_, r_, COL, 2, cv::LINE_AA);
+
+    cv::addWeighted(img_draw_layer, ALPHA, img, 1.0-ALPHA, 0.0, img);
+
+    return;
 }

@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
         cv::Mat img_in, img_in_g, img_edge;
         std::filesystem::path fpath;
         std::string img_fname, img_fname_base;
+        FigList det_objs;
 
         img_fpath = argv[1];
         img_in = cv::imread(img_fpath);
@@ -200,17 +201,21 @@ int main(int argc, char *argv[])
         extractEdge(img_in_g, img_edge, dbg);
 
         // 直線／円検出
+        extractObjects(img_edge, det_objs, cfg);
 
         // 検出結果を重畳描画
+        for(auto det_obj : det_objs)
+        {
+            det_obj->draw(img_in);
+        }
 
-        dbg.dumpImg(img_edge, "det");
+        dbg.dumpImg(img_in, "det");
         dbg.printLogLine("time[sec] = %d",0);
 
         dbg.closeLogFile();
 
         // ウィンドウに表示
-        // cv::imshow("Sample Window", img_in);
-        cv::imshow("Sample Window", img_edge);
+        cv::imshow("Sample Window", img_in);
         cv::waitKey(0);
 
         ret = 0;
