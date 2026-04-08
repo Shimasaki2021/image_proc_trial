@@ -3,6 +3,17 @@
 
 // === Fig ===
 
+Fig& Fig::operator=(const Fig& f)
+{
+    is_valid_      = f.is_valid_;
+    num_inlier_    = f.num_inlier_;
+    inlier_pixels_ = f.inlier_pixels_;
+    dist_th_       = f.dist_th_;
+    min_inlier_th_ = f.min_inlier_th_;
+
+    return (*this);
+}
+
 void Fig::erasePixels(cv::Mat &img) const
 {
     if((is_valid_ == true) && (inlier_pixels_.size() > 0))
@@ -17,7 +28,29 @@ void Fig::erasePixels(cv::Mat &img) const
     return;
 }
 
+std::string Fig::toString(void) const
+{
+    std::stringstream ss;
+    ss << "{valid=" << is_valid_ << ",num_inlier=" << num_inlier_ << ",";
+    return ss.str();
+}
+
 // === FigLine ===
+
+FigLine& FigLine::operator=(const FigLine& f)
+{
+    Fig::operator=(f);
+
+    a_ = f.a_;
+    b_ = f.b_;
+    c_ = f.c_;
+    sqrt_a2_plus_b2_ = f.sqrt_a2_plus_b2_;
+    inlier_bbox_min_ = f.inlier_bbox_min_;
+    inlier_bbox_max_ = f.inlier_bbox_max_;
+    len_lineseg_     = f.len_lineseg_;
+
+    return (*this);
+}
 
 void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
 {
@@ -279,7 +312,32 @@ void FigLine::draw(cv::Mat &img) const
     return;
 }
 
+std::string FigLine::toString(void) const
+{
+    std::stringstream ss;
+    ss << Fig::toString() << ",a=" << a_ << ",b=" << b_ << ",c=" << c_;
+    ss << ",inlier_bbox={(" << inlier_bbox_min_.x << "," << inlier_bbox_min_.y << ")-";
+    ss << "(" << inlier_bbox_max_.x << "," << inlier_bbox_max_.y << ")},";
+    ss << "len_lineseg=" << len_lineseg_ << "}";
+    return ss.str();
+}
+
 // === FigCircle ===
+
+FigCircle& FigCircle::operator=(const FigCircle& f)
+{
+    Fig::operator=(f);
+
+    a_ = f.a_;
+    b_ = f.b_;
+    c_ = f.c_;
+    center_ = f.center_;
+    r_      = f.r_;
+    inlier_dense_th_ = f.inlier_dense_th_;
+    min_r_th_        = f.min_r_th_;
+
+    return (*this);
+}
 
 void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
 {
@@ -491,4 +549,13 @@ void FigCircle::draw(cv::Mat &img) const
     cv::addWeighted(img_draw_layer, ALPHA, img, 1.0-ALPHA, 0.0, img);
 
     return;
+}
+
+std::string FigCircle::toString(void) const
+{
+    std::stringstream ss;
+    ss << Fig::toString() << ",a=" << a_ << ",b=" << b_ << ",c=" << c_;
+    ss << ",center=(" << center_.x << "," << center_.y << ")";
+    ss << ",r=" << r_ << "}";
+    return ss.str();
 }

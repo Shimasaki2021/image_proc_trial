@@ -94,6 +94,7 @@ public:
         inlier_pixels_.clear();
         return;
     }
+    Fig& operator=(const Fig& f);
 
     void erasePixels(cv::Mat &img) const;
     
@@ -117,6 +118,7 @@ public:
     {
         return;
     }
+    virtual std::string toString(void) const;
 
     bool is_valid_;
     int  num_inlier_;
@@ -140,6 +142,8 @@ public:
         return;
     }
 
+    FigLine& operator=(const FigLine& f);
+
     void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const;
     bool isEnableCreate(const CvPointList &sel_pixels) const;
     void create(const CvPointList &sel_pixels);
@@ -149,6 +153,7 @@ public:
     void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     int densityFilter(double density_th);
     void draw(cv::Mat &img) const;
+    std::string toString(void) const;
 
     double a_;
     double b_;
@@ -181,12 +186,15 @@ public:
         return;
     }
 
+    FigCircle& operator=(const FigCircle& f);
+
     void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const;
     bool isEnableCreate(const CvPointList &sel_pixels) const;
     void create(const CvPointList &sel_pixels);
     int countInlier(const CvPointList &pixels, double dist_th);
     int densityFilter(double density_th);
     void draw(cv::Mat &img) const;
+    std::string toString(void) const;
 
     double a_;
     double b_;

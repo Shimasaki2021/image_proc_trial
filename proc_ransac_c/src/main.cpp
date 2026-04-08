@@ -14,7 +14,6 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
                          CfgType &cfg)
 {
     std::shared_ptr<Fig> target_fig;
-    std::shared_ptr<Fig> best_fig;
     int num_iter;
     int count_iter;
     int num_max_inlier;
@@ -23,16 +22,18 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     if(target_obj_type.figtype_ == FigType::FIGTYPE_LINE_)
     {
         target_fig = std::make_shared<FigLine>(cfg);
+        det_obj    = std::make_shared<FigLine>(cfg);
     }
     else
     {
         target_fig = std::make_shared<FigCircle>(cfg);
+        det_obj    = std::make_shared<FigCircle>(cfg);
     }
 
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
 
     num_max_inlier = 0;
-    (*best_fig) = (*target_fig);
+    (*det_obj) = (*target_fig);
     count_iter = 0;
 
     while(count_iter < num_iter)
@@ -54,23 +55,22 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
 
             if(num_inlier > num_max_inlier)
             {
+                // inlier数最大の直線／円を返す
                 num_max_inlier = num_inlier;
-                (*best_fig) = (*target_fig);
+                (*det_obj) = (*target_fig);
             }
 
             count_iter++;
         }
     }
 
-    // inlier数最大の直線／円を返す
-    (*det_obj) = (*best_fig);
-
     return;
 }
 
 void extractObjects(cv::Mat &img_edge, 
                     FigList &det_objs, 
-                    CfgType &cfg)
+                    CfgType &cfg,
+                    DebugOut &dbg)
 {
     FigType target_obj_type;
     CvPointList edge_pixels;
@@ -81,6 +81,7 @@ void extractObjects(cv::Mat &img_edge,
     {
         int len_edge_pixels;
         std::shared_ptr<Fig> det_obj(nullptr);
+        char fname_img_edge[128];
 
         // エッジ画像からエッジ点群を抽出
         cv::findNonZero(img_edge, edge_pixels);
@@ -103,6 +104,14 @@ void extractObjects(cv::Mat &img_edge,
             // 同じ種別の図形検出を継続
             det_obj->erasePixels(img_edge);
 
+            dbg.printLogLine("[%lu] detect %s",
+                             det_objs.size(), 
+                             target_obj_type.toString().c_str());
+            dbg.printLogLine("  %s", det_obj->toString().c_str());
+            
+            snprintf(fname_img_edge, sizeof(fname_img_edge), "edge_tmp%lu_%s",
+                     det_objs.size(), target_obj_type.toString().c_str());
+            dbg.dumpImg(img_edge, std::string(fname_img_edge));
         }
         else
         {
@@ -184,6 +193,8 @@ int main(int argc, char *argv[])
         std::filesystem::path fpath;
         std::string img_fname, img_fname_base;
         FigList det_objs;
+        std::chrono::system_clock::time_point time_s, time_e;
+        double time_elapsed;
 
         img_fpath = argv[1];
         img_in = cv::imread(img_fpath);
@@ -196,12 +207,17 @@ int main(int argc, char *argv[])
         dbg.is_out_ = true;
         dbg.openLogFile("log.txt");
 
+        time_s = std::chrono::system_clock::now();
+
         // エッジ検出
         cv::cvtColor(img_in, img_in_g, cv::COLOR_BGR2GRAY);
         extractEdge(img_in_g, img_edge, dbg);
 
         // 直線／円検出
-        extractObjects(img_edge, det_objs, cfg);
+        extractObjects(img_edge, det_objs, cfg, dbg);
+
+        time_e = std::chrono::system_clock::now();
+        time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(time_e - time_s).count(); 
 
         // 検出結果を重畳描画
         for(auto det_obj : det_objs)
@@ -210,7 +226,7 @@ int main(int argc, char *argv[])
         }
 
         dbg.dumpImg(img_in, "det");
-        dbg.printLogLine("time[sec] = %d",0);
+        dbg.printLogLine("time[sec] = %f", time_elapsed);
 
         dbg.closeLogFile();
 
