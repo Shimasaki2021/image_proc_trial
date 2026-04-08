@@ -184,7 +184,7 @@ public:
         r_ = 0;
 
         inlier_dense_th_ = strtof(cfg["INLIER_CIRCLE_DENSE_TH"].c_str(), NULL);
-        min_r_th_ = strtol(cfg["CIRCLE_MIN_R_TH"].c_str(), NULL, 10);
+        min_r_th_ = strtof(cfg["CIRCLE_MIN_R_TH"].c_str(), NULL);
         return;
     }
 

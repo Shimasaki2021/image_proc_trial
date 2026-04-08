@@ -33,7 +33,8 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
 
     num_max_inlier = 0;
-    (*det_obj) = (*target_fig);
+    // (*det_obj) = (*target_fig);
+    (*det_obj) = target_fig;
     count_iter = 0;
 
     while(count_iter < num_iter)
@@ -108,7 +109,7 @@ void extractObjects(cv::Mat &img_edge,
             dbg.printLogLine("[%lu] detect %s",
                              det_objs.size(), 
                              target_obj_type.toString().c_str());
-            dbg.printLogLine("  %s", det_obj->toString().c_str());
+            // dbg.printLogLine("  %s", det_obj->toString().c_str());
             
             snprintf(fname_img_edge, sizeof(fname_img_edge), "edge_tmp%lu_%s",
                      det_objs.size(), target_obj_type.toString().c_str());
@@ -232,8 +233,8 @@ int main(int argc, char *argv[])
         dbg.closeLogFile();
 
         // ウィンドウに表示
-        cv::imshow("Sample Window", img_in);
-        cv::waitKey(0);
+        // cv::imshow("Sample Window", img_in);
+        // cv::waitKey(0);
 
         ret = 0;
     }

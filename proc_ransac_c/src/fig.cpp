@@ -149,6 +149,7 @@ void FigLine::create(const CvPointList &sel_pixels)
             a_ = a;
             b_ = b;
             c_ = c;
+            sqrt_a2_plus_b2_ = sqrt_a2_plus_b2;
             is_valid_ = true;
         }
     }
