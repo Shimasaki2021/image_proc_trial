@@ -146,16 +146,16 @@ public:
     FigLine& operator=(const FigLine& f);
     void operator=(const std::shared_ptr<Fig> &p) override;
 
-    void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const;
-    bool isEnableCreate(const CvPointList &sel_pixels) const;
-    void create(const CvPointList &sel_pixels);
-    int countInlier(const CvPointList &pixels, double dist_th);
+    void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const override;
+    bool isEnableCreate(const CvPointList &sel_pixels) const override;
+    void create(const CvPointList &sel_pixels) override;
+    int countInlier(const CvPointList &pixels, double dist_th) override;
     void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
     int calcLineseg(const cv::Point &bbox_min, const cv::Point &bbox_max) const;
     void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     int densityFilter(double density_th);
-    void draw(cv::Mat &img) const;
-    std::string toString(void) const;
+    void draw(cv::Mat &img) const override;
+    std::string toString(void) const override;
 
     double a_;
     double b_;
@@ -191,13 +191,13 @@ public:
     FigCircle& operator=(const FigCircle& f);
     void operator=(const std::shared_ptr<Fig> &p) override;
 
-    void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const;
-    bool isEnableCreate(const CvPointList &sel_pixels) const;
-    void create(const CvPointList &sel_pixels);
-    int countInlier(const CvPointList &pixels, double dist_th);
+    void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const override;
+    bool isEnableCreate(const CvPointList &sel_pixels) const override;
+    void create(const CvPointList &sel_pixels) override;
+    int countInlier(const CvPointList &pixels, double dist_th) override;
     int densityFilter(double density_th);
-    void draw(cv::Mat &img) const;
-    std::string toString(void) const;
+    void draw(cv::Mat &img) const override;
+    std::string toString(void) const override;
 
     double a_;
     double b_;
