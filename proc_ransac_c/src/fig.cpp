@@ -14,6 +14,15 @@ Fig& Fig::operator=(const Fig& f)
     return (*this);
 }
 
+void Fig::operator=(const std::shared_ptr<Fig> &p)
+{
+    if(p != nullptr)
+    {
+        Fig::operator=(*p);
+    }
+    return;
+}
+
 void Fig::erasePixels(cv::Mat &img) const
 {
     if((is_valid_ == true) && (inlier_pixels_.size() > 0))
@@ -50,6 +59,17 @@ FigLine& FigLine::operator=(const FigLine& f)
     len_lineseg_     = f.len_lineseg_;
 
     return (*this);
+}
+
+void FigLine::operator=(const std::shared_ptr<Fig> &p)
+{
+    const std::shared_ptr<FigLine> pline = std::dynamic_pointer_cast<FigLine>(p);
+
+    if(pline != nullptr)
+    {
+        FigLine::operator=(*pline);
+    }
+    return;
 }
 
 void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
@@ -337,6 +357,17 @@ FigCircle& FigCircle::operator=(const FigCircle& f)
     min_r_th_        = f.min_r_th_;
 
     return (*this);
+}
+
+void FigCircle::operator=(const std::shared_ptr<Fig> &p)
+{
+    const std::shared_ptr<FigCircle> pcircle = std::dynamic_pointer_cast<FigCircle>(p);
+
+    if(pcircle != nullptr)
+    {
+        FigCircle::operator=(*pcircle);
+    }
+    return;
 }
 
 void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const

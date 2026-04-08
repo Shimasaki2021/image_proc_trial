@@ -57,7 +57,8 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             {
                 // inlier数最大の直線／円を返す
                 num_max_inlier = num_inlier;
-                (*det_obj) = (*target_fig);
+                // (*det_obj) = (*target_fig);
+                (*det_obj) = target_fig;
             }
 
             count_iter++;

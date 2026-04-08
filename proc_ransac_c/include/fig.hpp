@@ -95,6 +95,7 @@ public:
         return;
     }
     Fig& operator=(const Fig& f);
+    virtual void operator=(const std::shared_ptr<Fig> &p);
 
     void erasePixels(cv::Mat &img) const;
     
@@ -143,6 +144,7 @@ public:
     }
 
     FigLine& operator=(const FigLine& f);
+    void operator=(const std::shared_ptr<Fig> &p) override;
 
     void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const;
     bool isEnableCreate(const CvPointList &sel_pixels) const;
@@ -187,6 +189,7 @@ public:
     }
 
     FigCircle& operator=(const FigCircle& f);
+    void operator=(const std::shared_ptr<Fig> &p) override;
 
     void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const;
     bool isEnableCreate(const CvPointList &sel_pixels) const;
