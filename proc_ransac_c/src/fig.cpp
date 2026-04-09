@@ -5,11 +5,12 @@
 
 Fig& Fig::operator=(const Fig& f)
 {
-    is_valid_      = f.is_valid_;
-    num_inlier_    = f.num_inlier_;
-    inlier_pixels_ = f.inlier_pixels_;
-    dist_th_       = f.dist_th_;
-    min_inlier_th_ = f.min_inlier_th_;
+    is_valid_        = f.is_valid_;
+    num_inlier_      = f.num_inlier_;
+    inlier_pixels_   = f.inlier_pixels_;
+    inlier_dense_th_ = f.inlier_dense_th_;
+    dist_th_         = f.dist_th_;
+    min_inlier_th_   = f.min_inlier_th_;
 
     return (*this);
 }

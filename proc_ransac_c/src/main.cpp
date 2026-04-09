@@ -33,7 +33,6 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
 
     num_max_inlier = 0;
-    // (*det_obj) = (*target_fig);
     (*det_obj) = target_fig;
     count_iter = 0;
 
@@ -58,7 +57,6 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             {
                 // inlier数最大の直線／円を返す
                 num_max_inlier = num_inlier;
-                // (*det_obj) = (*target_fig);
                 (*det_obj) = target_fig;
             }
 
@@ -109,7 +107,7 @@ void extractObjects(cv::Mat &img_edge,
             dbg.printLogLine("[%lu] detect %s",
                              det_objs.size(), 
                              target_obj_type.toString().c_str());
-            // dbg.printLogLine("  %s", det_obj->toString().c_str());
+            dbg.printLogLine("  %s", det_obj->toString().c_str());
             
             snprintf(fname_img_edge, sizeof(fname_img_edge), "edge_tmp%lu_%s",
                      det_objs.size(), target_obj_type.toString().c_str());
@@ -214,6 +212,7 @@ int main(int argc, char *argv[])
         // エッジ検出
         cv::cvtColor(img_in, img_in_g, cv::COLOR_BGR2GRAY);
         extractEdge(img_in_g, img_edge, dbg);
+        dbg.dumpImg(img_edge, "edge");
 
         // 直線／円検出
         extractObjects(img_edge, det_objs, cfg, dbg);

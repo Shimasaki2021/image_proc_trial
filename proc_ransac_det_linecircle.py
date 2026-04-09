@@ -97,6 +97,10 @@ class Fig:
     
     def draw(self, img:np.ndarray) -> np.ndarray:
         return img
+    
+    def __str__(self) -> str:
+        val = f"[valid={self.is_valid_},num_inlier={self.num_inlier_},"
+        return val
 
 class FigLine(Fig):
 
@@ -196,7 +200,7 @@ class FigLine(Fig):
 
             if self.num_inlier_ > self.min_inlier_th_:
                 # inlier点群の外接矩形/線分長を算出(近似)
-                self.inlier_bbox_ = self.calcInlierBBox(pixels)
+                self.inlier_bbox_ = self.calcInlierBBox(np.array(inlier_pixels))
                 self.len_lineseg_ = self.calcLenLineseg()
 
                 # 点群密度が閾値未満の場合は無効化（num_inlier＝0）
@@ -222,7 +226,7 @@ class FigLine(Fig):
 
             if self.num_inlier_ > self.min_inlier_th_:
                 # inlier点群の外接矩形/線分長(近似)を算出
-                self.inlier_bbox_ = self.calcInlierBBox(pixels)
+                self.inlier_bbox_ = self.calcInlierBBox(pixels[mask])
                 self.len_lineseg_ = self.calcLenLineseg()
 
                 # 点群密度が閾値未満の場合は無効化（num_inlier＝0）
@@ -288,6 +292,12 @@ class FigLine(Fig):
 
         return img
 
+    def __str__(self) -> str:
+        val  = f"{super().__str__()},a={self.a_},b={self.b_},c={self.c_}"
+        val += f",inlier_bbox=[({self.inlier_bbox_[0]},{self.inlier_bbox_[1]})-"
+        val += f"({self.inlier_bbox_[2]},{self.inlier_bbox_[3]})],"
+        val += f"len_lineseg={self.len_lineseg_}]"
+        return val
 
 class FigCircle(Fig):
 
@@ -453,6 +463,12 @@ class FigCircle(Fig):
 
         return img
 
+    def __str__(self) -> str:
+        val  = f"{super().__str__()},a={self.a_},b={self.b_},c={self.c_}"
+        val += f",center=({self.center_[X]},{self.center_[Y]})"
+        val += f",r={self.r_}]"
+        return val
+
 class DebugOut:
     def __init__(self, outdir:str, fname_base:str):
         self.outdir_ = outdir
@@ -562,6 +578,7 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
             img_edge = det_obj.erasePixels(img_edge)
 
             dbg.printLogLine(f"[{len(det_objs)}] detect {target_obj_type}")
+            dbg.printLogLine(f"  {det_obj}")
             dbg.dumpImg(img_edge, f"edge_tmp{len(det_objs)}_{target_obj_type}")
 
         else:
