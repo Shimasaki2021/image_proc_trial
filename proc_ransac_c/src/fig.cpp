@@ -569,7 +569,7 @@ int FigCircle::densityFilter(double density_th)
 
 void FigCircle::draw(cv::Mat &img) const
 {
-    const cv::Scalar COL = cv::Scalar(0,255,255);
+    const cv::Scalar COL = cv::Scalar(0,255,0);
     const double ALPHA = 0.6;
 
     cv::Mat img_draw_layer;
