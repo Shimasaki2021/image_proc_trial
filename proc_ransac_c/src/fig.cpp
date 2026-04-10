@@ -58,6 +58,7 @@ FigLine& FigLine::operator=(const FigLine& f)
     inlier_bbox_min_ = f.inlier_bbox_min_;
     inlier_bbox_max_ = f.inlier_bbox_max_;
     len_lineseg_     = f.len_lineseg_;
+    line_min_Len_th_ = f.line_min_Len_th_;
 
     return (*this);
 }
@@ -185,8 +186,16 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
             calcInlierBBox(inlier_pixels_, inlier_bbox_min_, inlier_bbox_max_);
             len_lineseg_ = calcLineseg(inlier_bbox_min_, inlier_bbox_max_);
 
-            // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
-            num_inlier_ = densityFilter(inlier_dense_th_);
+            // 線分長が閾値未満の場合は無効化（num_inlier＝0）
+            if(len_lineseg_ < line_min_Len_th_)
+            {
+                num_inlier_ = 0;
+            }
+            else
+            {
+                // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
+                num_inlier_ = densityFilter(inlier_dense_th_);
+            }
         }
         else
         {
@@ -567,6 +576,18 @@ int FigCircle::densityFilter(double density_th)
     return num_inlier_;
 }
 
+void FigCircle::erasePixels(cv::Mat &img) const
+{
+    const cv::Scalar COL = cv::Scalar(0,0,0);
+    const int MARGIN = 2;
+
+    if(is_valid_ == true)
+    {
+        // 内部も消去
+        cv::circle(img, center_, r_ + MARGIN, COL, cv::FILLED, cv::LINE_4); 
+    }
+    return;
+}
 void FigCircle::draw(cv::Mat &img) const
 {
     const cv::Scalar COL = cv::Scalar(0,255,0);

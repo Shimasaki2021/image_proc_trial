@@ -172,6 +172,8 @@ int main(int argc, char *argv[])
         {"INLIER_LINE_DENSE_TH", "0.5"},    // 直線
         {"INLIER_CIRCLE_DENSE_TH", "0.5"},  // 円
 
+        // 線分の最小長[pixel]
+        {"LINE_MIN_LEN_TH", "20"},
         // 円の最小半径[pixel]
         {"CIRCLE_MIN_R_TH", "5"},
 

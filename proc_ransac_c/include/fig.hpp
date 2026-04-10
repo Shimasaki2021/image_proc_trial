@@ -97,7 +97,7 @@ public:
     Fig& operator=(const Fig& f);
     virtual void operator=(const std::shared_ptr<Fig> &p);
 
-    void erasePixels(cv::Mat &img) const;
+    virtual void erasePixels(cv::Mat &img) const;
     
     virtual void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
     {
@@ -140,6 +140,7 @@ public:
         b_ = 0.0;
         c_ = 0.0;
         inlier_dense_th_ = strtof(cfg["INLIER_LINE_DENSE_TH"].c_str(), NULL);
+        line_min_Len_th_ = strtof(cfg["LINE_MIN_LEN_TH"].c_str(), NULL);
         return;
     }
 
@@ -166,7 +167,7 @@ public:
     cv::Point inlier_bbox_max_;
     int len_lineseg_;
 
-
+    double line_min_Len_th_;
 };
 
 class FigCircle : public Fig
@@ -196,6 +197,7 @@ public:
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
     int densityFilter(double density_th);
+    void erasePixels(cv::Mat &img) const override;
     void draw(cv::Mat &img) const override;
     std::string toString(void) const override;
 

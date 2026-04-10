@@ -116,6 +116,7 @@ class FigLine(Fig):
         self.len_lineseg_ = 0.0
         
         self.inlier_dense_th_ = float(cfg["INLIER_LINE_DENSE_TH"])
+        self.line_min_Len_th_ = float(cfg["LINE_MIN_LEN_TH"])
         return
 
     def choiseRandomPixels(self, pixels:np.ndarray) -> np.ndarray:
@@ -229,8 +230,12 @@ class FigLine(Fig):
                 self.inlier_bbox_ = self.calcInlierBBox(pixels[mask])
                 self.len_lineseg_ = self.calcLenLineseg()
 
-                # 点群密度が閾値未満の場合は無効化（num_inlier＝0）
-                self.num_inlier_ = self.densityFilter(self.inlier_dense_th_)
+                # 線分長が閾値未満の場合は無効化（num_inlier＝0）
+                if self.len_lineseg_ < self.line_min_Len_th_:
+                    self.num_inlier_ = 0
+                else:
+                    # 点群密度が閾値未満の場合は無効化（num_inlier＝0）
+                    self.num_inlier_ = self.densityFilter(self.inlier_dense_th_)
 
                 if self.num_inlier_ > 0:
                     self.inlier_pixels_ = copy.deepcopy(pixels[mask])
@@ -450,6 +455,18 @@ class FigCircle(Fig):
 
         return self.num_inlier_
 
+    def erasePixels(self, img:np.ndarray) -> np.ndarray:
+        COL = (0,0,0)
+        MARGIN = 2
+        if (self.is_valid_ == True):
+
+            # erase_thick = int(self.dist_th_) + MARGIN
+            # cv2.circle(img, (self.center_[X], self.center_[Y]), self.r_, COL, erase_thick, cv2.LINE_4) # 円周のみ消去
+
+            cv2.circle(img, (self.center_[X], self.center_[Y]), self.r_ + MARGIN, COL, cv2.FILLED, cv2.LINE_4) # 内部も消去
+
+        return img
+
     def draw(self, img:np.ndarray) -> np.ndarray:
         COL = (0,255,0)
         ALPHA = 0.6
@@ -656,6 +673,8 @@ if __name__ == "__main__":
         "INLIER_LINE_DENSE_TH"   : 0.5, # 直線
         "INLIER_CIRCLE_DENSE_TH" : 0.5, # 円
 
+        # 線分の最小長[pixel]
+        "LINE_MIN_LEN_TH" : 20,
         # 円の最小半径[pixel]
         "CIRCLE_MIN_R_TH" : 5,
 
