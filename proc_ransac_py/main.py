@@ -40,7 +40,10 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
             # num_inlier = target_fig.countInlier(edge_pixels, target_fig.dist_th_)
             num_inlier = target_fig.countInlier2(edge_pixels, target_fig.dist_th_)
 
-            if num_inlier > num_max_inlier:
+            # inlier点群の特徴（密度等）でフィルタリング
+            is_valid = target_fig.filteredByInlierPixels()
+
+            if (is_valid == True) and (num_inlier > num_max_inlier):
                 num_max_inlier = num_inlier
                 best_fig = copy.deepcopy(target_fig)
     
