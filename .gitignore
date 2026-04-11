@@ -6,4 +6,5 @@ data/DSCF1595.JPG
 *.xlsx
 build/
 test_c/
+test_py/
 proc_ransac_py/__pycache__/

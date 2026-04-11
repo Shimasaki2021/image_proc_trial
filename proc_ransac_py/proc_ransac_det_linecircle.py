@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from typing import List,Dict,Tuple,Any
 
-from fig_det_linecircle import FigType, Fig, FigLine, FigCircle
+from fig import FigType, Fig, FigLine, FigCircle
 from debug import DebugOut
 
 
