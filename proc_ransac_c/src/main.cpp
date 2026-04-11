@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
         extractObjects(img_edge, det_objs, cfg, dbg);
 
         time_e = std::chrono::system_clock::now();
-        time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(time_e - time_s).count(); 
+        time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(time_e - time_s).count(); 
 
         // 検出結果を重畳描画
         for(auto det_obj : det_objs)
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
         }
 
         dbg.dumpImg(img_in, "det");
-        dbg.printLogLine("time[sec] = %f", time_elapsed);
+        dbg.printLogLine("time[sec] = %f", time_elapsed/1000.0);
 
         dbg.closeLogFile();
 
