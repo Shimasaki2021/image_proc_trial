@@ -40,7 +40,8 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
             # num_inlier = target_fig.countInlier(edge_pixels, target_fig.dist_th_)
             num_inlier = target_fig.countInlier2(edge_pixels, target_fig.dist_th_)
 
-            # inlier点群の特徴（密度等）でフィルタリング
+            # inlier点群の特徴抽出（外接矩形）、フィルタリング
+            target_fig.calcInlierBBox()
             is_valid = target_fig.filteredByInlierPixels()
 
             if (is_valid == True) and (num_inlier > num_max_inlier):

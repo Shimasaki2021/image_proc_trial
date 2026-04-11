@@ -48,6 +48,7 @@ class Fig:
         self.is_valid_ = False
         self.num_inlier_ = 0
         self.inlier_pixels_:np.ndarray = None
+        self.inlier_bbox_:np.ndarray = None
 
         self.dist_th_ = float(cfg["INLIER_DIST_TH"])
         self.min_inlier_th_ = int(cfg["INLIER_NUM_MIN_TH"])
@@ -79,7 +80,16 @@ class Fig:
     def countInlier2(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
         return self.num_inlier_
-    
+
+    def calcInlierBBox(self):
+        if self.inlier_pixels_ is not None:
+            # inlier点群の外接矩形を作成
+            bbox_min = self.inlier_pixels_.min(0)
+            bbox_max = self.inlier_pixels_.max(0)
+            self.inlier_bbox_ = np.array([bbox_min[X], bbox_min[Y], bbox_max[X], bbox_max[Y]])
+
+        return
+
     def filteredByInlierPixels(self) -> bool:
         return self.is_valid_
 
@@ -110,7 +120,6 @@ class FigLine(Fig):
         self.b_ = 0.0
         self.c_ = 0.0
         self.sqrt_a2_plus_b2_ = 0.0 # √a^2 + b^2
-        self.inlier_bbox_:np.ndarray = None
         self.len_lineseg_ = 0.0
         
         self.inlier_dense_th_ = float(cfg["INLIER_LINE_DENSE_TH"])
@@ -157,22 +166,16 @@ class FigLine(Fig):
 
         return
 
-    def calcInlierBBox(self, pixels:np.ndarray) -> np.ndarray:
-        # inlier点群の外接矩形を作成
-        bbox_min = pixels.min(0)
-        bbox_max = pixels.max(0)
-        inlier_bbox = np.array([bbox_min[X], bbox_min[Y], bbox_max[X], bbox_max[Y]])
-
-        return inlier_bbox
-
     def calcLenLineseg(self) -> int:
-        # inlier点群で形成される線分長≒外接矩形の長辺　に近似
-        bbox_w = self.inlier_bbox_[2] - self.inlier_bbox_[0]
-        bbox_h = self.inlier_bbox_[3] - self.inlier_bbox_[1]
-        len_lineseg = bbox_w if bbox_w > bbox_h else bbox_h
+        len_lineseg = 0
+
+        if self.inlier_bbox_ is not None:
+            # inlier点群で形成される線分長≒外接矩形の長辺　に近似
+            bbox_w = self.inlier_bbox_[2] - self.inlier_bbox_[0]
+            bbox_h = self.inlier_bbox_[3] - self.inlier_bbox_[1]
+            len_lineseg = bbox_w if bbox_w > bbox_h else bbox_h
 
         return len_lineseg
-    
 
     def densityFilter(self, density_th:float) -> bool:
         # 点群密度がdensity_th未満の場合は無効化
@@ -224,7 +227,6 @@ class FigLine(Fig):
     def filteredByInlierPixels(self) -> bool:
         if (self.is_valid_ == True) and (self.inlier_pixels_ is not None):
             # inlier点群の外接矩形/線分長(近似)を算出
-            self.inlier_bbox_ = self.calcInlierBBox(self.inlier_pixels_)
             self.len_lineseg_ = self.calcLenLineseg()
 
             # 線分長が閾値未満の場合は無効化
