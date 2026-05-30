@@ -178,7 +178,6 @@ public:
     bool isEnableCreate(const CvPointList &sel_pixels) const override;
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
-    // void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
     int calcLenLineseg(void) const;
     int densityFilter(double density_th);
     bool filteredByInlierPixels(void) override;

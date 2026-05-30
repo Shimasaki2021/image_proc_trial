@@ -219,22 +219,6 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
-#if 0
-            // inlier点群の外接矩形/線分長を算出(近似)
-            calcInlierBBox(inlier_pixels_, inlier_bbox_min_, inlier_bbox_max_);
-            len_lineseg_ = calcLineseg(inlier_bbox_min_, inlier_bbox_max_);
-
-            // 線分長が閾値未満の場合は無効化（num_inlier＝0）
-            if(len_lineseg_ < line_min_Len_th_)
-            {
-                num_inlier_ = 0;
-            }
-            else
-            {
-                // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
-                num_inlier_ = densityFilter(inlier_dense_th_);
-            }
-#endif
         }
         else
         {
@@ -249,37 +233,6 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 
     return num_inlier_;
 }
-
-#if 0
-void FigLine::calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const
-{
-    bbox_min.x = INT_MAX;
-    bbox_min.y = INT_MAX;
-    bbox_max.x = INT_MIN;
-    bbox_max.y = INT_MIN;
-
-    for(const auto &px : pixels)
-    {
-        if(px.x < bbox_min.x)
-        {
-            bbox_min.x = px.x;
-        }
-        if(px.y < bbox_min.y)
-        {
-            bbox_min.y = px.y;
-        }
-        if(bbox_max.x < px.x)
-        {
-            bbox_max.x = px.x;
-        }
-        if(bbox_max.y < px.y)
-        {
-            bbox_max.y = px.y;
-        }
-    }
-    return;
-}
-#endif
 
 int FigLine::calcLenLineseg(void) const
 {
@@ -606,10 +559,6 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
-#if 0
-            // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
-            num_inlier_ = densityFilter(inlier_dense_th_);
-#endif
         }
         else
         {

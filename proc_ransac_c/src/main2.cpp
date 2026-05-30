@@ -114,26 +114,20 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     std::shared_ptr<Fig> target_fig;
     int num_iter;
     int count_iter;
-    // int num_max_inlier;
-    //int num_inlier;
 
     det_objs.clear();
 
     if(obj_type.figtype_ == FigType::FIGTYPE_LINE_)
     {
         target_fig = std::make_shared<FigLine>(cfg);
-        // det_obj    = std::make_shared<FigLine>(cfg);
     }
     else
     {
         target_fig = std::make_shared<FigCircle>(cfg);
-        // det_obj    = std::make_shared<FigCircle>(cfg);
     }
 
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
 
-    // num_max_inlier = 0;
-    // (*det_obj) = target_fig;
     count_iter = 0;
 
     while(count_iter < num_iter)
@@ -159,19 +153,10 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             target_fig->calcInlierBBox();
             is_valid = target_fig->filteredByInlierPixels();
 
-#if 1
             if(is_valid == true)
             {
                 det_objs.push_back(target_fig->clone());
             }
-#else
-            if(num_inlier > num_max_inlier)
-            {
-                // inlier数最大の直線／円を返す
-                num_max_inlier = num_inlier;
-                (*det_obj) = target_fig;
-            }
-#endif
 
             count_iter++;
         }
@@ -215,7 +200,6 @@ void extractObjects(cv::Mat &img_edge,
         FigList det_objs;
         int len_edge_pixels;
         std::shared_ptr<Fig> det_obj(nullptr);
-        //char fname_img_edge[128];
 
         // エッジ画像からエッジ点群を抽出
         cv::findNonZero(img_edge, edge_pixels);
@@ -229,7 +213,6 @@ void extractObjects(cv::Mat &img_edge,
         // エッジ点群から直線／円を検出
         extractObjectRANSAC(edge_pixels, target_obj_type, det_objs, cfg);
 
-#if 1
         if(det_objs.size() > 0)
         {
             // [検出できた場合] 
@@ -247,31 +230,6 @@ void extractObjects(cv::Mat &img_edge,
 
         // 次の種別の検出図形へ
         target_obj_type.next();
-#else
-        if((det_obj != nullptr) && (det_obj->is_valid_ == true))
-        {
-            // [検出できた場合] 
-            det_objs.push_back(det_obj);
-
-            // 検出した直線／円に含まれるエッジ点(inlier点)を削除し、
-            // 同じ種別の図形検出を継続
-            det_obj->erasePixels(img_edge);
-
-            dbg.printLogLine("[%lu] detect %s",
-                             det_objs.size(), 
-                             target_obj_type.toString().c_str());
-            dbg.printLogLine("  %s", det_obj->toString().c_str());
-            
-            snprintf(fname_img_edge, sizeof(fname_img_edge), "edge_tmp%lu_%s",
-                     det_objs.size(), target_obj_type.toString().c_str());
-            dbg.dumpImg(img_edge, std::string(fname_img_edge));
-        }
-        else
-        {
-            // [検出できなかった場合] 次の種別の検出図形へ
-            target_obj_type.next();
-        }
-#endif
     }
 
     return;
