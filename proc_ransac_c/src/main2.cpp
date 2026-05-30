@@ -241,7 +241,7 @@ void extractObjects(cv::Mat &img_edge,
                 det_obj->erasePixels(img_edge);
             }
 
-            dbg.printLogLine("[%s] detect.", target_obj_type.toString().c_str());
+            dbg.printLogLine("[%s] %d detect.", target_obj_type.toString().c_str(), det_objs.size());
             dbg.dumpImg(img_edge, std::string("edge_tmp_after_") + target_obj_type.toString());
         }
 

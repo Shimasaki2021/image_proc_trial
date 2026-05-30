@@ -199,6 +199,7 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 {
     num_inlier_ = 0;
     inlier_pixels_.clear();
+    inlier_pixels_.reserve(pixels.size());
 
     if(is_valid_ == true)
     {
@@ -571,6 +572,7 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
 {
     num_inlier_ = 0;
     inlier_pixels_.clear();
+    inlier_pixels_.reserve(pixels.size());
 
     if(is_valid_ == true)
     {
@@ -604,8 +606,10 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
+#if 0
             // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
             num_inlier_ = densityFilter(inlier_dense_th_);
+#endif
         }
         else
         {
@@ -636,6 +640,12 @@ int FigCircle::densityFilter(double density_th)
     }
 
     return num_inlier_;
+}
+
+bool FigCircle::filteredByInlierPixels(void)
+{
+    is_valid_ = densityFilter(inlier_dense_th_);
+    return is_valid_;
 }
 
 void FigCircle::erasePixels(cv::Mat &img) const

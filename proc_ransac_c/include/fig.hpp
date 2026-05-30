@@ -128,8 +128,10 @@ public:
     {
         return 0;
     }
+
     void calcInlierBBox(void);
-    bool filteredByInlierPixels(void)
+
+    virtual bool filteredByInlierPixels(void)
     {
         return is_valid_;
     }
@@ -179,7 +181,7 @@ public:
     // void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
     int calcLenLineseg(void) const;
     int densityFilter(double density_th);
-    bool filteredByInlierPixels(void);
+    bool filteredByInlierPixels(void) override;
     void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     void draw(cv::Mat &img) const override;
     std::string toString(void) const override;
@@ -228,6 +230,7 @@ public:
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
     int densityFilter(double density_th);
+    bool filteredByInlierPixels(void) override;
     void erasePixels(cv::Mat &img) const override;
     void draw(cv::Mat &img) const override;
     std::string toString(void) const override;
