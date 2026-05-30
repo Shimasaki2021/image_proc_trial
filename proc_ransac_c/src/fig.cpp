@@ -8,6 +8,8 @@ Fig& Fig::operator=(const Fig& f)
     is_valid_        = f.is_valid_;
     num_inlier_      = f.num_inlier_;
     inlier_pixels_   = f.inlier_pixels_;
+    inlier_bbox_     = f.inlier_bbox_;
+
     inlier_dense_th_ = f.inlier_dense_th_;
     dist_th_         = f.dist_th_;
     min_inlier_th_   = f.min_inlier_th_;
@@ -21,6 +23,40 @@ void Fig::operator=(const std::shared_ptr<Fig> &p)
     {
         Fig::operator=(*p);
     }
+    return;
+}
+
+void Fig::calcInlierBBox(void)
+{
+    if(inlier_pixels_.size() > 0)
+    {
+        // inlier点群の外接矩形を作成
+        inlier_bbox_.pt_min_.x = inlier_pixels_[0].x;
+        inlier_bbox_.pt_min_.y = inlier_pixels_[0].y;
+        inlier_bbox_.pt_max_.x = inlier_pixels_[0].x;
+        inlier_bbox_.pt_max_.y = inlier_pixels_[0].y;
+
+        for(const auto &px : inlier_pixels_)
+        {
+            if(px.x < inlier_bbox_.pt_min_.x)
+            {
+                inlier_bbox_.pt_min_.x = px.x;
+            }
+            if(px.y < inlier_bbox_.pt_min_.y)
+            {
+                inlier_bbox_.pt_min_.y = px.y;
+            }
+            if(px.x > inlier_bbox_.pt_max_.x)
+            {
+                inlier_bbox_.pt_max_.x = px.x;
+            }
+            if(px.y > inlier_bbox_.pt_max_.y)
+            {
+                inlier_bbox_.pt_max_.y = px.y;
+            }
+        }
+    }
+
     return;
 }
 
@@ -55,10 +91,10 @@ FigLine& FigLine::operator=(const FigLine& f)
     b_ = f.b_;
     c_ = f.c_;
     sqrt_a2_plus_b2_ = f.sqrt_a2_plus_b2_;
-    inlier_bbox_min_ = f.inlier_bbox_min_;
-    inlier_bbox_max_ = f.inlier_bbox_max_;
+    // inlier_bbox_min_ = f.inlier_bbox_min_;
+    // inlier_bbox_max_ = f.inlier_bbox_max_;
     len_lineseg_     = f.len_lineseg_;
-    line_min_Len_th_ = f.line_min_Len_th_;
+    line_min_len_th_ = f.line_min_len_th_;
 
     return (*this);
 }
@@ -182,6 +218,7 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
+#if 0
             // inlier点群の外接矩形/線分長を算出(近似)
             calcInlierBBox(inlier_pixels_, inlier_bbox_min_, inlier_bbox_max_);
             len_lineseg_ = calcLineseg(inlier_bbox_min_, inlier_bbox_max_);
@@ -196,6 +233,7 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
                 // 点群密度が閾値未満の場合は無効化（num_inlier＝0）
                 num_inlier_ = densityFilter(inlier_dense_th_);
             }
+#endif
         }
         else
         {
@@ -211,6 +249,7 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
     return num_inlier_;
 }
 
+#if 0
 void FigLine::calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const
 {
     bbox_min.x = INT_MAX;
@@ -239,14 +278,15 @@ void FigLine::calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv:
     }
     return;
 }
+#endif
 
-int FigLine::calcLineseg(const cv::Point &bbox_min, const cv::Point &bbox_max) const
+int FigLine::calcLenLineseg(void) const
 {
     int len_lineseg;
     int bbox_w, bbox_h;
 
-    bbox_w = bbox_max.x - bbox_min.x;
-    bbox_h = bbox_max.y - bbox_min.y;
+    bbox_w = inlier_bbox_.pt_max_.x - inlier_bbox_.pt_min_.x;
+    bbox_h = inlier_bbox_.pt_max_.y - inlier_bbox_.pt_min_.y;
     len_lineseg = (bbox_w > bbox_h) ? bbox_w : bbox_h;
 
     return len_lineseg;
@@ -263,6 +303,27 @@ int FigLine::densityFilter(double density_th)
     }
 
     return num_inlier_;
+}
+bool FigLine::filteredByInlierPixels(void)
+{
+    if((is_valid_ == true) && (inlier_pixels_.size() > 0))
+    {
+        // inlier点群の外接矩形/線分長(近似)を算出
+        len_lineseg_ = calcLenLineseg();
+
+        // 線分長が閾値未満の場合は無効化
+        if(len_lineseg_ < line_min_len_th_)
+        {
+            is_valid_ = false;
+        }
+        else
+        {
+            // 点群密度が閾値未満の場合は無効化
+            is_valid_ = densityFilter(inlier_dense_th_);
+        }
+    }
+
+    return is_valid_;
 }
 
 void FigLine::calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const
@@ -324,7 +385,7 @@ void FigLine::draw(cv::Mat &img) const
     CvPointList inter_px;
 
     // 直線と点群の外接矩形の交点を算出
-    calcIntersectBBox(inlier_bbox_min_, inlier_bbox_max_, inter_px);
+    calcIntersectBBox(inlier_bbox_.pt_min_, inlier_bbox_.pt_max_, inter_px);
 
     if(inter_px.size() >= 2)
     {
@@ -347,9 +408,10 @@ std::string FigLine::toString(void) const
 {
     std::stringstream ss;
     ss << Fig::toString() << ",a=" << a_ << ",b=" << b_ << ",c=" << c_;
-    ss << ",inlier_bbox={(" << inlier_bbox_min_.x << "," << inlier_bbox_min_.y << ")-";
-    ss << "(" << inlier_bbox_max_.x << "," << inlier_bbox_max_.y << ")},";
+    ss << ",inlier_bbox={(" << inlier_bbox_.pt_min_.x << "," << inlier_bbox_.pt_min_.y << ")-";
+    ss << "(" << inlier_bbox_.pt_max_.x << "," << inlier_bbox_.pt_max_.y << ")},";
     ss << "len_lineseg=" << len_lineseg_ << "}";
+
     return ss.str();
 }
 

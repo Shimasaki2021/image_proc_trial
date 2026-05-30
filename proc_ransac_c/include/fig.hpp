@@ -11,6 +11,12 @@
 
 typedef std::vector<cv::Point> CvPointList;
 
+typedef struct 
+{
+    cv::Point pt_min_;
+    cv::Point pt_max_;
+} CvRect;
+
 class FigType
 {
 public:
@@ -76,8 +82,11 @@ public:
     {
         is_valid_ = false;
         num_inlier_ = 0;
-        inlier_dense_th_ = 0.0;
+        inlier_pixels_.clear();
+        inlier_bbox_.pt_min_ = cv::Point(0,0);
+        inlier_bbox_.pt_max_ = cv::Point(0,0);
 
+        inlier_dense_th_ = 0.0;
         dist_th_ = strtof(cfg["INLIER_DIST_TH"].c_str(), NULL);
         min_inlier_th_ = strtol(cfg["INLIER_NUM_MIN_TH"].c_str(), NULL, 10);
         return;
@@ -92,10 +101,14 @@ public:
         is_valid_ = false;
         num_inlier_ = 0;
         inlier_pixels_.clear();
+        inlier_bbox_.pt_min_ = cv::Point(0,0);
+        inlier_bbox_.pt_max_ = cv::Point(0,0);
         return;
     }
     Fig& operator=(const Fig& f);
     virtual void operator=(const std::shared_ptr<Fig> &p);
+
+    virtual std::shared_ptr<Fig> clone() const = 0;
 
     virtual void erasePixels(cv::Mat &img) const;
     
@@ -115,6 +128,12 @@ public:
     {
         return 0;
     }
+    void calcInlierBBox(void);
+    bool filteredByInlierPixels(void)
+    {
+        return is_valid_;
+    }
+
     virtual void draw(cv::Mat &img) const
     {
         return;
@@ -124,6 +143,7 @@ public:
     bool is_valid_;
     int  num_inlier_;
     CvPointList inlier_pixels_;
+    CvRect inlier_bbox_;
 
     double inlier_dense_th_;
     double dist_th_;
@@ -140,21 +160,27 @@ public:
         b_ = 0.0;
         c_ = 0.0;
         inlier_dense_th_ = strtof(cfg["INLIER_LINE_DENSE_TH"].c_str(), NULL);
-        line_min_Len_th_ = strtof(cfg["LINE_MIN_LEN_TH"].c_str(), NULL);
+        line_min_len_th_ = strtof(cfg["LINE_MIN_LEN_TH"].c_str(), NULL);
         return;
     }
 
     FigLine& operator=(const FigLine& f);
     void operator=(const std::shared_ptr<Fig> &p) override;
 
+    std::shared_ptr<Fig> clone() const override 
+    {
+        return std::make_shared<FigLine>(*this);
+    }
+
     void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const override;
     bool isEnableCreate(const CvPointList &sel_pixels) const override;
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
-    void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
-    int calcLineseg(const cv::Point &bbox_min, const cv::Point &bbox_max) const;
-    void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
+    // void calcInlierBBox(const CvPointList &pixels, cv::Point &bbox_min, cv::Point &bbox_max) const;
+    int calcLenLineseg(void) const;
     int densityFilter(double density_th);
+    bool filteredByInlierPixels(void);
+    void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     void draw(cv::Mat &img) const override;
     std::string toString(void) const override;
 
@@ -163,11 +189,11 @@ public:
     double c_;
     double sqrt_a2_plus_b2_;
 
-    cv::Point inlier_bbox_min_;
-    cv::Point inlier_bbox_max_;
+    // cv::Point inlier_bbox_min_;
+    // cv::Point inlier_bbox_max_;
     int len_lineseg_;
 
-    double line_min_Len_th_;
+    double line_min_len_th_;
 };
 
 class FigCircle : public Fig
@@ -191,6 +217,11 @@ public:
 
     FigCircle& operator=(const FigCircle& f);
     void operator=(const std::shared_ptr<Fig> &p) override;
+
+    std::shared_ptr<Fig> clone() const override 
+    {
+        return std::make_shared<FigCircle>(*this);
+    }
 
     void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const override;
     bool isEnableCreate(const CvPointList &sel_pixels) const override;
