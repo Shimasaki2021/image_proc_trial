@@ -190,8 +190,6 @@ public:
     double c_;
     double sqrt_a2_plus_b2_;
 
-    // cv::Point inlier_bbox_min_;
-    // cv::Point inlier_bbox_max_;
     int len_lineseg_;
 
     double line_min_len_th_;
