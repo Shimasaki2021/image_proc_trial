@@ -98,7 +98,7 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
             count_iter += 1
 
     # 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
-    #   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOK_K=-1とすればこの削除機能を無効化可能）
+    #   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOP_K=-1とすればこの削除機能を無効化可能）
     TOP_K = 200
     boxes = [[det_obj.inlier_bbox_[0], det_obj.inlier_bbox_[1], det_obj.inlier_bbox_[2], det_obj.inlier_bbox_[3]] 
              for det_obj in det_objs]

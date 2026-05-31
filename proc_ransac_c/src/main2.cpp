@@ -168,7 +168,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     }
 
     // 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
-    //   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOK_K=-1とすればこの削除機能を無効化可能）
+    //   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOP_K=-1とすればこの削除機能を無効化可能）
     const int TOP_K = 200;
     std::vector<CvRect> boxes;
     std::vector<int> scores;
