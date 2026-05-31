@@ -150,7 +150,6 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
 
             // 作成した直線／円周上の点の数（inlier）をカウント
             target_fig->countInlier(edge_pixels, target_fig->dist_th_);
-            // num_inlier = target_fig->countInlier(edge_pixels, target_fig->dist_th_);
             
             // inlier点群の特徴抽出（外接矩形）、フィルタリング
             target_fig->calcInlierBBox();
@@ -159,23 +158,19 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             if(is_valid == true)
             {
                 det_objs.push_back(target_fig->clone());
-
-                // if(obj_type.figtype_ == FigType::FIGTYPE_LINE_)
-                // {
-                //     printf("In %s(): %s\n",__FUNCTION__, target_fig->toString().c_str());
-                // }
             }
 
             count_iter++;
         }
     }
 
-    // printf("In %s: det_objs.size() = %d\n",__FUNCTION__, det_objs.size());
-
     // 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
     std::vector<CvRect> boxes;
     std::vector<int> scores;
     std::vector<int> sup_idx;
+
+    boxes.reserve(det_objs.size());
+    scores.reserve(det_objs.size());
 
     for(auto det_obj : det_objs)
     {
@@ -186,6 +181,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     sup_idx = sup_res.first;
 
     det_objs_sup.clear();
+    det_objs_sup.reserve(sup_idx.size());
 
     for(int idx : sup_idx)
     {

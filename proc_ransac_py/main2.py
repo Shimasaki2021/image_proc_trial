@@ -70,7 +70,6 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
         iou_th = 0.1
 
     num_iter = int(float(len(edge_pixels)) * float(cfg["RANSAC_NUM_ITER_PER_EDGE"]))
-    # print(f"num_iter = {num_iter}")
 
     count_iter = 0
 
@@ -87,8 +86,7 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
             target_fig.create(choise_pixels)
 
             # 作成した直線／円周上の点の数（inlier）をカウント
-            # target_fig.countInlier(edge_pixels, target_fig.dist_th_)
-            target_fig.countInlier2(edge_pixels, target_fig.dist_th_)
+            target_fig.countInlier(edge_pixels, target_fig.dist_th_)
 
             # inlier点群の特徴抽出（外接矩形）、フィルタリング
             target_fig.calcInlierBBox()
@@ -96,9 +94,6 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
             if is_valid == True:
                 det_objs.append(copy.deepcopy(target_fig))
-
-                # if obj_type.figtype_ == FigType.Def.FIGTYPE_LINE_:
-                #     print(f"{target_fig}")
     
             count_iter += 1
 
@@ -131,7 +126,6 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
             break
 
         edge_pixels = edge_pixels.reshape(edge_pixels.shape[0], edge_pixels.shape[2]) # [n,1,2] → [n,2]
-        # print(f"edge_pixels = {len(edge_pixels)}, {edge_pixels[0:3]}, {type(edge_pixels)}, {edge_pixels.shape}")
 
         # エッジ点群から直線／円を検出
         det_objs = extractObjectRANSAC(edge_pixels, target_obj_type, cfg)

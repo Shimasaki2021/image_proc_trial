@@ -73,12 +73,7 @@ class Fig:
     def densityFilter(self, density_th:float) -> bool:
         return True
 
-    @deprecated("低速版")
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
-        self.num_inlier_ = 0
-        return self.num_inlier_
-
-    def countInlier2(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
         self.inlier_pixels_ = None
         self.inlier_bbox_ = None
@@ -190,28 +185,7 @@ class FigLine(Fig):
 
         return self.is_valid_
 
-    @deprecated("低速版")
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
-        self.num_inlier_ = 0
-        inlier_pixels = []
-
-        if self.is_valid_ == True:
-            for px in pixels:
-                # 点と直線の距離 < 閾値 を満たす点の数をカウント
-                dist = math.fabs(self.a_ * float(px[X]) + self.b_ * float(px[Y]) + self.c_) / self.sqrt_a2_plus_b2_
-
-                if dist < dist_th:
-                    self.num_inlier_ += 1
-                    inlier_pixels.append(px)
-
-            if self.num_inlier_ > self.min_inlier_th_:
-                self.inlier_pixels_ = np.array(inlier_pixels)
-            else:
-                self.num_inlier_ = 0
-
-        return self.num_inlier_
-
-    def countInlier2(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
 
         if self.is_valid_ == True:
@@ -399,32 +373,7 @@ class FigCircle(Fig):
 
         return self.is_valid_
 
-    @deprecated("低速版")
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
-        self.num_inlier_ = 0
-        inlier_pixels = []
-
-        if self.is_valid_ == True:
-            for px in pixels:
-                # 点と円周の距離 < 閾値 を満たす点の数をカウント
-                #   点と円周の距離＝|点と円中心の距離 - 円半径|
-                vec_px_center  = px - self.center_
-                dist_px_center = math.sqrt(float(vec_px_center[X]**2 + vec_px_center[Y]**2))
-                dist = math.fabs(dist_px_center - float(self.r_))
-
-                if dist < dist_th:
-                    self.num_inlier_ += 1
-                    inlier_pixels.append(px)
-
-            if self.num_inlier_ > self.min_inlier_th_:
-                self.inlier_pixels_ = np.array(inlier_pixels)
-            else:
-                self.num_inlier_ = 0
-
-
-        return self.num_inlier_
-
-    def countInlier2(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
 
         if self.is_valid_ == True:
