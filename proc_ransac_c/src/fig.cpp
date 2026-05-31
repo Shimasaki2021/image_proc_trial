@@ -77,7 +77,7 @@ void Fig::erasePixels(cv::Mat &img) const
 std::string Fig::toString(void) const
 {
     std::stringstream ss;
-    ss << "{valid=" << is_valid_ << ",num_inlier=" << num_inlier_ << ",";
+    ss << "{valid=" << is_valid_ << ",num_inlier=," << num_inlier_ << ",";
     return ss.str();
 }
 
@@ -365,9 +365,9 @@ std::string FigLine::toString(void) const
 {
     std::stringstream ss;
     ss << Fig::toString() << ",a=" << a_ << ",b=" << b_ << ",c=" << c_;
-    ss << ",inlier_bbox={(" << inlier_bbox_.pt_min_.x << "," << inlier_bbox_.pt_min_.y << ")-";
-    ss << "(" << inlier_bbox_.pt_max_.x << "," << inlier_bbox_.pt_max_.y << ")},";
-    ss << "len_lineseg=" << len_lineseg_ << "}";
+    ss << ",inlier_bbox={(," << inlier_bbox_.pt_min_.x << "," << inlier_bbox_.pt_min_.y << ",)-";
+    ss << "(," << inlier_bbox_.pt_max_.x << "," << inlier_bbox_.pt_max_.y << ",)},";
+    ss << "len_lineseg=," << len_lineseg_ << ",}";
 
     return ss.str();
 }

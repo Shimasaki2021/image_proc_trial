@@ -106,7 +106,7 @@ class Fig:
         return img
     
     def __str__(self) -> str:
-        val = f"[valid={self.is_valid_},num_inlier={self.num_inlier_},"
+        val = f"[valid={self.is_valid_},num_inlier=,{self.num_inlier_},"
         return val
 
 class FigLine(Fig):
@@ -278,9 +278,9 @@ class FigLine(Fig):
 
     def __str__(self) -> str:
         val  = f"{super().__str__()},a={self.a_},b={self.b_},c={self.c_}"
-        val += f",inlier_bbox=[({self.inlier_bbox_[0]},{self.inlier_bbox_[1]})-"
-        val += f"({self.inlier_bbox_[2]},{self.inlier_bbox_[3]})],"
-        val += f"len_lineseg={self.len_lineseg_}]"
+        val += f",inlier_bbox=[(,{self.inlier_bbox_[0]},{self.inlier_bbox_[1]},)-"
+        val += f"(,{self.inlier_bbox_[2]},{self.inlier_bbox_[3]},)],"
+        val += f"len_lineseg=,{self.len_lineseg_},]"
         return val
 
 class FigCircle(Fig):

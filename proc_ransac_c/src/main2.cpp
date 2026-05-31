@@ -15,7 +15,7 @@ std::pair<std::vector<int>, int> nmSuppression(
     const std::vector<CvRect>& boxes,
     const std::vector<int>& scores,
     float iou_th = 0.45f,
-    int top_k = 200) 
+    int top_k = -1) 
 {
     int N;
 
@@ -53,7 +53,7 @@ std::pair<std::vector<int>, int> nmSuppression(
             }
     );
 
-    if((int)idx.size() > top_k) 
+    if((top_k > 0) && (top_k < (int)idx.size()))
     {
         idx.erase(idx.begin(), idx.end() - top_k);
     }
@@ -88,7 +88,10 @@ std::pair<std::vector<int>, int> nmSuppression(
             float h = std::max(0.0f, yy2 - yy1);
 
             float inter = w * h;
+
             float uni = area[j] + area[i] - inter;
+            uni = std::max(uni, (float)1e-6);
+
             float IoU = inter / uni;
 
             if (IoU <= iou_th) 
@@ -165,6 +168,8 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     }
 
     // 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
+    //   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOK_K=-1とすればこの削除機能を無効化可能）
+    const int TOP_K = 200;
     std::vector<CvRect> boxes;
     std::vector<int> scores;
     std::vector<int> sup_idx;
@@ -177,7 +182,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
         boxes.push_back(det_obj->inlier_bbox_);
         scores.push_back(det_obj->num_inlier_);
     }
-    auto sup_res = nmSuppression(boxes, scores, iou_th);
+    auto sup_res = nmSuppression(boxes, scores, iou_th, TOP_K);
     sup_idx = sup_res.first;
 
     det_objs_sup.clear();
@@ -292,7 +297,7 @@ int main(int argc, char *argv[])
         {"INLIER_CIRCLE_DENSE_TH", "0.5"},  // 円
 
         // 線分の最小長[pixel]
-        {"LINE_MIN_LEN_TH", "150"},
+        {"LINE_MIN_LEN_TH", "20"},
         // 円の最小半径[pixel]
         {"CIRCLE_MIN_R_TH", "5"},
 

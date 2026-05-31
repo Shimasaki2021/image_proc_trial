@@ -9,7 +9,7 @@ from typing import List,Dict,Tuple,Any
 from fig import FigType, Fig, FigLine, FigCircle
 from debug import DebugOut
 
-def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th:float, top_k:int=-1) -> Tuple[np.ndarray, int]:
+def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th:float=0.45, top_k:int=-1) -> Tuple[np.ndarray, int]:
 
     if len(boxes) == 0:
         return (np.array([], dtype=np.int64), 0)
@@ -25,7 +25,7 @@ def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th:float, top_k:int=-
     area = (x2 - x1) * (y2 - y1)
 
     idx = np.argsort(scores)
-    if top_k > 0:
+    if (top_k > 0) and (top_k < idx.shape[0]):
         idx = idx[-top_k:]
 
     while idx.size > 0:
@@ -98,13 +98,16 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
             count_iter += 1
 
     # 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
+    #   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOK_K=-1とすればこの削除機能を無効化可能）
+    TOP_K = 200
     boxes = [[det_obj.inlier_bbox_[0], det_obj.inlier_bbox_[1], det_obj.inlier_bbox_[2], det_obj.inlier_bbox_[3]] 
              for det_obj in det_objs]
     scores = [det_obj.num_inlier_ for det_obj in det_objs]
 
     (sup_idx , _) = nmSuppression(np.array(boxes), 
                                   np.array(scores),
-                                  iou_th)
+                                  iou_th, 
+                                  TOP_K)
 
     det_objs_sup = [det_objs[i] for i in sup_idx]
 
@@ -217,7 +220,7 @@ if __name__ == "__main__":
         "INLIER_CIRCLE_DENSE_TH" : 0.5, # 円
 
         # 線分の最小長[pixel]
-        "LINE_MIN_LEN_TH" : 150,
+        "LINE_MIN_LEN_TH" : 20,
         # 円の最小半径[pixel]
         "CIRCLE_MIN_R_TH" : 5,
 
