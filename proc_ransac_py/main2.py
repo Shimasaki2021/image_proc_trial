@@ -9,7 +9,7 @@ from typing import List,Dict,Tuple,Any
 from fig import FigType, Fig, FigLine, FigCircle
 from debug import DebugOut
 
-def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th:float=0.45, top_k:int=-1) -> Tuple[np.ndarray, int]:
+def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th=0.45, top_k=-1) -> Tuple[np.ndarray, int]:
 
     if len(boxes) == 0:
         return (np.array([], dtype=np.int64), 0)
