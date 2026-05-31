@@ -15,6 +15,13 @@ typedef struct
 {
     cv::Point pt_min_;
     cv::Point pt_max_;
+
+    void clear(void)
+    {
+        pt_min_.x = pt_min_.y = 0;
+        pt_max_.x = pt_max_.y = 0;
+        return;
+    }
 } CvRect;
 
 class FigType
@@ -101,16 +108,13 @@ public:
         is_valid_ = false;
         num_inlier_ = 0;
         inlier_pixels_.clear();
-        inlier_bbox_.pt_min_ = cv::Point(0,0);
-        inlier_bbox_.pt_max_ = cv::Point(0,0);
+        inlier_bbox_.clear();
         return;
     }
     Fig& operator=(const Fig& f);
     virtual void operator=(const std::shared_ptr<Fig> &p);
 
     virtual std::shared_ptr<Fig> clone() const = 0;
-
-    virtual void erasePixels(cv::Mat &img) const;
     
     virtual void choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
     {
@@ -133,8 +137,10 @@ public:
 
     virtual bool filteredByInlierPixels(void)
     {
-        return is_valid_;
+        return false;
     }
+
+    virtual void erasePixels(cv::Mat &img) const;
 
     virtual void draw(cv::Mat &img) const
     {
@@ -162,7 +168,7 @@ public:
         b_ = 0.0;
         c_ = 0.0;
         inlier_dense_th_ = strtof(cfg["INLIER_LINE_DENSE_TH"].c_str(), NULL);
-        line_min_len_th_ = strtof(cfg["LINE_MIN_LEN_TH"].c_str(), NULL);
+        line_min_len_th_ = strtol(cfg["LINE_MIN_LEN_TH"].c_str(), NULL, 10);
         return;
     }
 
@@ -179,7 +185,7 @@ public:
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
     int calcLenLineseg(void) const;
-    int densityFilter(double density_th);
+    bool densityFilter(double density_th);
     bool filteredByInlierPixels(void) override;
     void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     void draw(cv::Mat &img) const override;
@@ -192,7 +198,7 @@ public:
 
     int len_lineseg_;
 
-    double line_min_len_th_;
+    int line_min_len_th_;
 };
 
 class FigCircle : public Fig
@@ -226,7 +232,7 @@ public:
     bool isEnableCreate(const CvPointList &sel_pixels) const override;
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
-    int densityFilter(double density_th);
+    bool densityFilter(double density_th);
     bool filteredByInlierPixels(void) override;
     void erasePixels(cv::Mat &img) const override;
     void draw(cv::Mat &img) const override;

@@ -57,7 +57,8 @@ class Fig:
     def reset(self):
         self.is_valid_ = False
         self.num_inlier_ = 0
-        self.inlier_pixels_:np.ndarray = None
+        self.inlier_pixels_ = None
+        self.inlier_bbox_ = None
         return
 
     def choiseRandomPixels(self, pixels:np.ndarray) -> np.ndarray:
@@ -79,10 +80,12 @@ class Fig:
 
     def countInlier2(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
+        self.inlier_pixels_ = None
+        self.inlier_bbox_ = None
         return self.num_inlier_
 
     def calcInlierBBox(self):
-        if self.inlier_pixels_ is not None:
+        if self.num_inlier_ > 0:
             # inlier点群の外接矩形を作成
             bbox_min = self.inlier_pixels_.min(0)
             bbox_max = self.inlier_pixels_.max(0)
@@ -91,7 +94,8 @@ class Fig:
         return
 
     def filteredByInlierPixels(self) -> bool:
-        return self.is_valid_
+        return False
+        # return self.is_valid_
 
     def erasePixels(self, img:np.ndarray) -> np.ndarray:
         if (self.is_valid_ == True) and (self.inlier_pixels_ is not None):
@@ -120,10 +124,10 @@ class FigLine(Fig):
         self.b_ = 0.0
         self.c_ = 0.0
         self.sqrt_a2_plus_b2_ = 0.0 # √a^2 + b^2
-        self.len_lineseg_ = 0.0
+        self.len_lineseg_ = 0
         
         self.inlier_dense_th_ = float(cfg["INLIER_LINE_DENSE_TH"])
-        self.line_min_len_th_ = float(cfg["LINE_MIN_LEN_TH"])
+        self.line_min_len_th_ = int(cfg["LINE_MIN_LEN_TH"])
         return
 
     def choiseRandomPixels(self, pixels:np.ndarray) -> np.ndarray:
@@ -222,10 +226,15 @@ class FigLine(Fig):
             else:
                 self.num_inlier_ = 0
 
+            if self.num_inlier_ == 0:
+                self.inlier_pixels_ = None
+                self.inlier_bbox_ = None
+
         return self.num_inlier_
 
     def filteredByInlierPixels(self) -> bool:
-        if (self.is_valid_ == True) and (self.inlier_pixels_ is not None):
+        if (self.is_valid_ == True) and (self.num_inlier_ > 0):
+            
             # inlier点群の外接矩形/線分長(近似)を算出
             self.len_lineseg_ = self.calcLenLineseg()
 
@@ -235,6 +244,9 @@ class FigLine(Fig):
             else:
                 # 点群密度が閾値未満の場合は無効化
                 self.is_valid_ = self.densityFilter(self.inlier_dense_th_)
+        
+        else:
+            self.is_valid_ = False
 
         return self.is_valid_
 
@@ -434,6 +446,10 @@ class FigCircle(Fig):
                 self.inlier_pixels_ = copy.deepcopy(pixels[mask])
             else:
                 self.num_inlier_ = 0
+
+            if self.num_inlier_ == 0:
+                self.inlier_pixels_ = None
+                self.inlier_bbox_ = None
 
         return self.num_inlier_
 

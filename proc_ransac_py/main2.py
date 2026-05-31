@@ -64,8 +64,10 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
     if obj_type.figtype_ == FigType.Def.FIGTYPE_LINE_:
         target_fig = FigLine(cfg)
+        iou_th = 0.5
     else:
         target_fig = FigCircle(cfg)
+        iou_th = 0.1
 
     num_iter = int(float(len(edge_pixels)) * float(cfg["RANSAC_NUM_ITER_PER_EDGE"]))
     # print(f"num_iter = {num_iter}")
@@ -94,6 +96,9 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
             if is_valid == True:
                 det_objs.append(copy.deepcopy(target_fig))
+
+                # if obj_type.figtype_ == FigType.Def.FIGTYPE_LINE_:
+                #     print(f"{target_fig}")
     
             count_iter += 1
 
@@ -104,12 +109,11 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
     (sup_idx , _) = nmSuppression(np.array(boxes), 
                                   np.array(scores),
-                                  iou_th=0.1)
+                                  iou_th)
 
     det_objs_sup = [det_objs[i] for i in sup_idx]
 
     return det_objs_sup
-    # return det_objs
 
 
 def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List[Fig]:
@@ -206,7 +210,7 @@ if __name__ == "__main__":
     cfg = {
         # RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
         # "RANSAC_NUM_ITER_PER_EDGE" : 1.5,
-        "RANSAC_NUM_ITER_PER_EDGE" : 4.5,
+        "RANSAC_NUM_ITER_PER_EDGE" : 6.0,
 
         # 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
         "INLIER_DIST_TH" : 1.0, 
@@ -219,7 +223,7 @@ if __name__ == "__main__":
         "INLIER_CIRCLE_DENSE_TH" : 0.5, # 円
 
         # 線分の最小長[pixel]
-        "LINE_MIN_LEN_TH" : 20,
+        "LINE_MIN_LEN_TH" : 150,
         # 円の最小半径[pixel]
         "CIRCLE_MIN_R_TH" : 5,
 

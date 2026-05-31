@@ -28,7 +28,7 @@ void Fig::operator=(const std::shared_ptr<Fig> &p)
 
 void Fig::calcInlierBBox(void)
 {
-    if(inlier_pixels_.size() > 0)
+    if(num_inlier_ > 0)
     {
         // inlier点群の外接矩形を作成
         inlier_bbox_.pt_min_.x = inlier_pixels_[0].x;
@@ -62,7 +62,7 @@ void Fig::calcInlierBBox(void)
 
 void Fig::erasePixels(cv::Mat &img) const
 {
-    if((is_valid_ == true) && (inlier_pixels_.size() > 0))
+    if((is_valid_ == true) && (num_inlier_ > 0))
     {
         // inlier点を削除(0塗りつぶし)する
         for(auto &px : inlier_pixels_)
@@ -91,8 +91,6 @@ FigLine& FigLine::operator=(const FigLine& f)
     b_ = f.b_;
     c_ = f.c_;
     sqrt_a2_plus_b2_ = f.sqrt_a2_plus_b2_;
-    // inlier_bbox_min_ = f.inlier_bbox_min_;
-    // inlier_bbox_max_ = f.inlier_bbox_max_;
     len_lineseg_     = f.len_lineseg_;
     line_min_len_th_ = f.line_min_len_th_;
 
@@ -228,6 +226,7 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
         if(num_inlier_ == 0)
         {
             inlier_pixels_.clear();
+            inlier_bbox_.clear();
         }
     }
 
@@ -246,21 +245,21 @@ int FigLine::calcLenLineseg(void) const
     return len_lineseg;
 }
 
-int FigLine::densityFilter(double density_th)
+bool FigLine::densityFilter(double density_th)
 {
     int min_inlier_th;
     min_inlier_th = (int)(density_th * (double)len_lineseg_);
 
     if(num_inlier_ < min_inlier_th)
     {
-        num_inlier_ = 0;
+        is_valid_ = false;
     }
 
-    return num_inlier_;
+    return is_valid_;
 }
 bool FigLine::filteredByInlierPixels(void)
 {
-    if((is_valid_ == true) && (inlier_pixels_.size() > 0))
+    if((is_valid_ == true) && (num_inlier_ > 0))
     {
         // inlier点群の外接矩形/線分長(近似)を算出
         len_lineseg_ = calcLenLineseg();
@@ -275,6 +274,10 @@ bool FigLine::filteredByInlierPixels(void)
             // 点群密度が閾値未満の場合は無効化
             is_valid_ = densityFilter(inlier_dense_th_);
         }
+    }
+    else
+    {
+        is_valid_ = false;
     }
 
     return is_valid_;
@@ -568,13 +571,14 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
         if(num_inlier_ == 0)
         {
             inlier_pixels_.clear();
+            inlier_bbox_.clear();
         }
     }
 
     return num_inlier_;
 }
 
-int FigCircle::densityFilter(double density_th)
+bool FigCircle::densityFilter(double density_th)
 {
     double len_circle;
     double min_inlier_th;
@@ -585,10 +589,10 @@ int FigCircle::densityFilter(double density_th)
 
     if(num_inlier_ < min_inlier_th)
     {
-        num_inlier_ = 0;
+        is_valid_ = false;
     }
 
-    return num_inlier_;
+    return is_valid_;
 }
 
 bool FigCircle::filteredByInlierPixels(void)

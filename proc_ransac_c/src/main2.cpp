@@ -114,16 +114,19 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     std::shared_ptr<Fig> target_fig;
     int num_iter;
     int count_iter;
+    float iou_th;
 
     det_objs.clear();
 
     if(obj_type.figtype_ == FigType::FIGTYPE_LINE_)
     {
         target_fig = std::make_shared<FigLine>(cfg);
+        iou_th = 0.5;
     }
     else
     {
         target_fig = std::make_shared<FigCircle>(cfg);
+        iou_th = 0.1;
     }
 
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
@@ -156,11 +159,18 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             if(is_valid == true)
             {
                 det_objs.push_back(target_fig->clone());
+
+                // if(obj_type.figtype_ == FigType::FIGTYPE_LINE_)
+                // {
+                //     printf("In %s(): %s\n",__FUNCTION__, target_fig->toString().c_str());
+                // }
             }
 
             count_iter++;
         }
     }
+
+    // printf("In %s: det_objs.size() = %d\n",__FUNCTION__, det_objs.size());
 
     // 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
     std::vector<CvRect> boxes;
@@ -172,7 +182,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
         boxes.push_back(det_obj->inlier_bbox_);
         scores.push_back(det_obj->num_inlier_);
     }
-    auto sup_res = nmSuppression(boxes, scores, 0.1);
+    auto sup_res = nmSuppression(boxes, scores, iou_th);
     sup_idx = sup_res.first;
 
     det_objs_sup.clear();
@@ -273,7 +283,7 @@ int main(int argc, char *argv[])
     {
         // RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
         // {"RANSAC_NUM_ITER_PER_EDGE", "1.5"},
-        {"RANSAC_NUM_ITER_PER_EDGE", "4.5"},
+        {"RANSAC_NUM_ITER_PER_EDGE", "6.0"},
 
         // 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
         {"INLIER_DIST_TH", "1.0"},
@@ -286,7 +296,7 @@ int main(int argc, char *argv[])
         {"INLIER_CIRCLE_DENSE_TH", "0.5"},  // 円
 
         // 線分の最小長[pixel]
-        {"LINE_MIN_LEN_TH", "20"},
+        {"LINE_MIN_LEN_TH", "150"},
         // 円の最小半径[pixel]
         {"CIRCLE_MIN_R_TH", "5"},
 
