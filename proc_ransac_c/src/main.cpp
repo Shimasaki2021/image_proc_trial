@@ -39,6 +39,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     while(count_iter < num_iter)
     {
         CvPointList choise_pixels;
+        bool is_valid;
 
         target_fig->reset();
 
@@ -53,7 +54,11 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
             // 作成した直線／円周上の点の数（inlier）をカウント
             num_inlier = target_fig->countInlier(edge_pixels, target_fig->dist_th_);
 
-            if(num_inlier > num_max_inlier)
+            // inlier点群の特徴抽出（外接矩形）、フィルタリング
+            target_fig->calcInlierBBox();
+            is_valid = target_fig->filteredByInlierPixels();
+
+            if((is_valid == true) && (num_inlier > num_max_inlier))
             {
                 // inlier数最大の直線／円を返す
                 num_max_inlier = num_inlier;
@@ -107,7 +112,7 @@ void extractObjects(cv::Mat &img_edge,
             dbg.printLogLine("[%lu] detect %s",
                              det_objs.size(), 
                              target_obj_type.toString().c_str());
-            dbg.printLogLine("  %s", det_obj->toString().c_str());
+            // dbg.printLogLine("  %s", det_obj->toString().c_str());
             
             snprintf(fname_img_edge, sizeof(fname_img_edge), "edge_tmp%lu_%s",
                      det_objs.size(), target_obj_type.toString().c_str());
@@ -160,7 +165,7 @@ int main(int argc, char *argv[])
     CfgType cfg = 
     {
         // RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
-        {"RANSAC_NUM_ITER_PER_EDGE", "1.5"},
+        {"RANSAC_NUM_ITER_PER_EDGE", "2.0"},
 
         // 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
         {"INLIER_DIST_TH", "1.0"},

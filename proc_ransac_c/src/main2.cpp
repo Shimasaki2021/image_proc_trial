@@ -283,7 +283,6 @@ int main(int argc, char *argv[])
     CfgType cfg = 
     {
         // RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
-        // {"RANSAC_NUM_ITER_PER_EDGE", "1.5"},
         {"RANSAC_NUM_ITER_PER_EDGE", "6.0"},
 
         // 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]

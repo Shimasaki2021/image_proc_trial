@@ -37,8 +37,7 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
             target_fig.create(choise_pixels)
 
             # 作成した直線／円周上の点の数（inlier）をカウント
-            # num_inlier = target_fig.countInlier(edge_pixels, target_fig.dist_th_)
-            num_inlier = target_fig.countInlier2(edge_pixels, target_fig.dist_th_)
+            num_inlier = target_fig.countInlier(edge_pixels, target_fig.dist_th_)
 
             # inlier点群の特徴抽出（外接矩形）、フィルタリング
             target_fig.calcInlierBBox()
@@ -83,7 +82,7 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
             img_edge = det_obj.erasePixels(img_edge)
 
             dbg.printLogLine(f"[{len(det_objs)}] detect {target_obj_type}")
-            dbg.printLogLine(f"  {det_obj}")
+            # dbg.printLogLine(f"  {det_obj}")
             dbg.dumpImg(img_edge, f"edge_tmp{len(det_objs)}_{target_obj_type}")
 
         else:
@@ -149,7 +148,7 @@ def main(img_fpath:str, cfg:Dict[str,Any]):
 if __name__ == "__main__":
     cfg = {
         # RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
-        "RANSAC_NUM_ITER_PER_EDGE" : 1.5,
+        "RANSAC_NUM_ITER_PER_EDGE" : 2.0,
 
         # 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
         "INLIER_DIST_TH" : 1.0, 
