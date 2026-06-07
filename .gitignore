@@ -1,9 +1,10 @@
 test.ipynb
-output/
+output*/
 data/DSCF1595.JPG
 .venv/
+~$*.xlsx
+*.xlsx
 build/
-test*/
-output*/
+test_c/
+test_py/
 proc_ransac_py/__pycache__/
-memo*

@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // ---------------------
+    // デバッグビルド用タスク（デフォルトビルドタスク）
+    // ---------------------
+
+    // configure
+    {
+      "label": "cmake: dbg_proc_ransac_c_cfg",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S", ".",
+        "-B", "build",
+        "-DCMAKE_BUILD_TYPE=Debug"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+
+    // build
+    {
+      "label": "cmake: dbg_proc_ransac_c_build",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build", "build"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true // デフォルトビルドタスクに設定
+      },
+      "dependsOn": "cmake: dbg_proc_ransac_c_cfg",
+      "problemMatcher": []
+    },
+
+    // ---------------------
+    // リリースビルド用タスク
+    // ---------------------
+
+    // configure
+    {
+      "label": "cmake: rel_proc_ransac_c_cfg",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S", ".",
+        "-B", "build",
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+
+    // build
+    {
+      "label": "cmake: rel_proc_ransac_c_build",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build", "build"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "dependsOn": "cmake: rel_proc_ransac_c_cfg",
+      "problemMatcher": []
+    },
+
+  ]
+}
