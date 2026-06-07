@@ -1,3 +1,9 @@
 test.ipynb
 output/
 data/DSCF1595.JPG
+.venv/
+build/
+test*/
+output*/
+proc_ransac_py/__pycache__/
+memo*
