@@ -91,7 +91,11 @@ FigLine& FigLine::operator=(const FigLine& f)
     b_ = f.b_;
     c_ = f.c_;
     sqrt_a2_plus_b2_ = f.sqrt_a2_plus_b2_;
-    len_lineseg_     = f.len_lineseg_;
+
+    len_lineseg_ = f.len_lineseg_;
+    lineseg_pt0_ = f.lineseg_pt0_;
+    lineseg_pt1_ = f.lineseg_pt1_;
+
     line_min_len_th_ = f.line_min_len_th_;
 
     return (*this);
@@ -193,6 +197,156 @@ void FigLine::create(const CvPointList &sel_pixels)
     return;
 }
 
+int FigLine::calcLenLineseg(void) const
+{
+#if 1
+    int len_lineseg;
+    cv::Point vec;
+
+    vec.x = lineseg_pt1_.x - lineseg_pt0_.x;
+    vec.y = lineseg_pt1_.y - lineseg_pt0_.y;
+    len_lineseg = int(sqrt((double)(vec.x * vec.x + vec.y * vec.y)));
+#else
+    int len_lineseg;
+    int bbox_w, bbox_h;
+
+    bbox_w = inlier_bbox_.pt_max_.x - inlier_bbox_.pt_min_.x;
+    bbox_h = inlier_bbox_.pt_max_.y - inlier_bbox_.pt_min_.y;
+    len_lineseg = (bbox_w > bbox_h) ? bbox_w : bbox_h;
+#endif
+
+    return len_lineseg;
+}
+
+bool FigLine::densityFilter(double density_th)
+{
+    int min_inlier_th;
+    min_inlier_th = (int)(density_th * (double)len_lineseg_);
+
+    if(num_inlier_ < min_inlier_th)
+    {
+        is_valid_ = false;
+    }
+
+    return is_valid_;
+}
+void FigLine::extractLineSegPixels(double k)
+{
+    int N;
+    N = inlier_pixels_.size();
+
+    if(N > 0)
+    {
+        // -- 点群の重心算出 --
+        Vec2 mean;
+        mean = Vec2(0.0, 0.0);
+        for(const auto& p : inlier_pixels_) 
+        {
+            mean = mean + Vec2(p);
+        }
+        mean = mean * (1.0 / (double)N);
+
+        std::vector<Vec2> centered(N);
+        for(int i = 0; i < N; i++)
+        {
+            centered[i] = Vec2(inlier_pixels_[i]) - mean;
+        } 
+
+        // -- 主成分方向の標準偏差sigma算出 --
+
+        //   共分散行列
+        //   [ sxx  sxy ]
+        //   [ sxy  syy ]
+        double sxx = 0.0;
+        double sxy = 0.0;
+        double syy = 0.0;
+        for(int i = 0; i < N; i++) 
+        {
+            sxx += centered[i].x_ * centered[i].x_;
+            sxy += centered[i].x_ * centered[i].y_;
+            syy += centered[i].y_ * centered[i].y_;
+        }
+        sxx /= N;
+        sxy /= N;
+        syy /= N;
+
+        //   固有値（解析解）算出
+        //     主成分方向の標準偏差sigma = 最大固有値
+        double trace = sxx + syy;
+        double det_part = sqrt((sxx - syy) * (sxx - syy) / 4.0 + sxy * sxy);
+
+        double lambda1 = trace / 2.0 + det_part;  // 最大固有値
+        // double lambda2 = trace / 2.0 - det_part;
+        double sigma = sqrt(lambda1);
+
+        //   固有ベクトル（第1主成分）
+        Vec2 v;
+        Vec2 pc1;
+        if(fabs(sxy) > 1e-12) 
+        {
+            v = Vec2(sxy, lambda1 - sxx);
+        }
+        else
+        {
+            // b = 0 の場合は軸が揃っている
+            v = (sxx >= syy) ? Vec2(1, 0) : Vec2(0, 1);
+        }
+        pc1 = v.normalize();
+
+        //    射影値
+        std::vector<double> proj(N);
+
+        for(int i = 0; i < N; i++)
+        {
+            proj[i] = centered[i].dot(pc1);
+        }
+
+        // -- k * sigma以内の点を、線分を構成する点として抽出 --
+        for(int i = N-1; i >= 0; i--) 
+        {
+            if(fabs(proj[i]) > (k * sigma))
+            {
+                // k * sigmaを超える点を線分を構成しない点(outlier)として除外
+                inlier_pixels_.erase(inlier_pixels_.begin() + i);
+                proj.erase(proj.begin() + i);
+            }
+        }
+
+        // -- 両端点の抽出 --
+        double proj_min = proj[0];
+        double proj_max = proj[0];
+        int min_idx = -1;
+        int max_idx = -1;
+
+        N = proj.size();
+        for(int i = 0; i < N; i++) 
+        {
+            // 射影値が最小、最大の点を両端点として選択
+            if(proj[i] < proj_min)
+            {
+                proj_min = proj[i];
+                min_idx = i;
+            }
+            if(proj[i] > proj_max)
+            {
+                proj_max = proj[i];
+                max_idx = i;
+            }
+        }
+
+        if(min_idx != -1)
+        {
+            lineseg_pt0_ = inlier_pixels_[min_idx];
+        }
+        if(max_idx != -1)
+        {
+            lineseg_pt1_ = inlier_pixels_[max_idx];
+        }
+    }
+
+    return;
+}
+
 int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 {
     num_inlier_ = 0;
@@ -217,6 +371,9 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
+            // 線分を構成する点のみにする
+            //   離れすぎている点(重心±kσを超えている点)を削除
+            extractLineSegPixels(2.0);
         }
         else
         {
@@ -226,6 +383,8 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
         if(num_inlier_ == 0)
         {
             inlier_pixels_.clear();
+            lineseg_pt0_ = cv::Point(0,0);
+            lineseg_pt1_ = cv::Point(0,0);
             inlier_bbox_.clear();
         }
     }
@@ -233,35 +392,11 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
     return num_inlier_;
 }
 
-int FigLine::calcLenLineseg(void) const
-{
-    int len_lineseg;
-    int bbox_w, bbox_h;
-
-    bbox_w = inlier_bbox_.pt_max_.x - inlier_bbox_.pt_min_.x;
-    bbox_h = inlier_bbox_.pt_max_.y - inlier_bbox_.pt_min_.y;
-    len_lineseg = (bbox_w > bbox_h) ? bbox_w : bbox_h;
-
-    return len_lineseg;
-}
-
-bool FigLine::densityFilter(double density_th)
-{
-    int min_inlier_th;
-    min_inlier_th = (int)(density_th * (double)len_lineseg_);
-
-    if(num_inlier_ < min_inlier_th)
-    {
-        is_valid_ = false;
-    }
-
-    return is_valid_;
-}
 bool FigLine::filteredByInlierPixels(void)
 {
     if((is_valid_ == true) && (num_inlier_ > 0))
     {
-        // inlier点群の外接矩形/線分長(近似)を算出
+        // 線分長を算出
         len_lineseg_ = calcLenLineseg();
 
         // 線分長が閾値未満の場合は無効化

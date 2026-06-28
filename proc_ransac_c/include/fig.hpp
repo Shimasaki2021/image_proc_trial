@@ -24,6 +24,50 @@ typedef struct
     }
 } CvRect;
 
+class Vec2 
+{
+public:
+    double x_, y_;
+
+    Vec2()
+     : x_(0.0), y_(0.0) 
+    {
+        return;
+    }
+    Vec2(double x, double y)
+     : x_(x), y_(y) 
+    {
+        return;
+    }
+    Vec2(const cv::Point &p)
+     : x_((double)p.x), y_((double)p.y)
+    {
+        return;
+    }
+
+    Vec2 operator+(const Vec2& o) const 
+    {
+        return Vec2(x_ + o.x_, y_ + o.y_); 
+    }
+    Vec2 operator-(const Vec2& o) const 
+    {
+        return Vec2(x_ - o.x_, y_ - o.y_); 
+    }
+    Vec2 operator*(double s) const 
+    {
+        return Vec2(x_ * s, y_ * s); 
+    }
+    double dot(const Vec2& a) const
+    {
+        return x_ * a.x_ + y_ * a.y_;
+    }
+    Vec2 normalize(void) const
+    {
+        double n = sqrt(x_ * x_ + y_ * y_);
+        return Vec2(x_ / n, y_ / n);
+    }
+};
+
 class FigType
 {
 public:
@@ -167,6 +211,12 @@ public:
         a_ = 0.0;
         b_ = 0.0;
         c_ = 0.0;
+        sqrt_a2_plus_b2_ = 0.0;
+
+        len_lineseg_ = 0;
+        lineseg_pt0_ = cv::Point(0,0);
+        lineseg_pt1_ = cv::Point(0,0);
+
         inlier_dense_th_ = strtof(cfg["INLIER_LINE_DENSE_TH"].c_str(), NULL);
         line_min_len_th_ = strtol(cfg["LINE_MIN_LEN_TH"].c_str(), NULL, 10);
         return;
@@ -186,6 +236,7 @@ public:
     int countInlier(const CvPointList &pixels, double dist_th) override;
     int calcLenLineseg(void) const;
     bool densityFilter(double density_th);
+    void extractLineSegPixels(double k);
     bool filteredByInlierPixels(void) override;
     void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
     void draw(cv::Mat &img) const override;
@@ -197,6 +248,8 @@ public:
     double sqrt_a2_plus_b2_;
 
     int len_lineseg_;
+    cv::Point lineseg_pt0_;
+    cv::Point lineseg_pt1_;
 
     int line_min_len_th_;
 };

@@ -119,7 +119,9 @@ class FigLine(Fig):
         self.b_ = 0.0
         self.c_ = 0.0
         self.sqrt_a2_plus_b2_ = 0.0 # √a^2 + b^2
+
         self.len_lineseg_ = 0
+        self.lineseg_pt_:np.ndarray = None
         
         self.inlier_dense_th_ = float(cfg["INLIER_LINE_DENSE_TH"])
         self.line_min_len_th_ = int(cfg["LINE_MIN_LEN_TH"])
@@ -168,11 +170,10 @@ class FigLine(Fig):
     def calcLenLineseg(self) -> int:
         len_lineseg = 0
 
-        if self.inlier_bbox_ is not None:
-            # inlier点群で形成される線分長≒外接矩形の長辺　に近似
-            bbox_w = self.inlier_bbox_[2] - self.inlier_bbox_[0]
-            bbox_h = self.inlier_bbox_[3] - self.inlier_bbox_[1]
-            len_lineseg = bbox_w if bbox_w > bbox_h else bbox_h
+        if self.lineseg_pt_ is not None:
+            # 線分の両端点の長さを算出
+            vec = self.lineseg_pt_[1] - self.lineseg_pt_[0]
+            len_lineseg = int(math.sqrt(vec[0]*vec[0] + vec[1]*vec[1]))
 
         return len_lineseg
 
@@ -185,6 +186,33 @@ class FigLine(Fig):
 
         return self.is_valid_
 
+    def extractLineSegPixels(self, pixels:np.ndarray, k=2.0) -> Tuple[np.ndarray, np.ndarray]:
+        # 点群の重心算出
+        mean = np.mean(pixels, axis=0)
+        centered = pixels - mean
+
+        # 主成分方向の標準偏差sigma算出
+        cov = np.cov(centered, rowvar=False, bias=True)
+        eigenvalues, eigenvectors = np.linalg.eig(cov)
+
+        idx = np.argmax(eigenvalues)
+        pc1 = eigenvectors[:, idx]
+
+        proj = centered @ pc1
+        sigma = np.std(proj)
+
+        # k * sigma以内の点を、線分を構成する点として抽出
+        mask = np.abs(proj) <= k * sigma
+        lineseg_pixels = pixels[mask]
+
+        # 両端点の抽出
+        proj_filtered = proj[mask]
+        min_idx = np.argmin(proj_filtered)
+        max_idx = np.argmax(proj_filtered)
+        endpoints = np.array([lineseg_pixels[min_idx], lineseg_pixels[max_idx]])
+
+        return (lineseg_pixels, endpoints)
+
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
 
@@ -196,12 +224,15 @@ class FigLine(Fig):
             self.num_inlier_ = np.count_nonzero(mask)
 
             if self.num_inlier_ > self.min_inlier_th_:
-                self.inlier_pixels_ = copy.deepcopy(pixels[mask])
+                # 線分を構成する点のみにする
+                #   離れすぎている点(重心±kσを超えている点)を削除
+                (self.inlier_pixels_, self.lineseg_pt_) = self.extractLineSegPixels(pixels[mask], 2.0)
             else:
                 self.num_inlier_ = 0
 
             if self.num_inlier_ == 0:
                 self.inlier_pixels_ = None
+                self.lineseg_pt_ = None
                 self.inlier_bbox_ = None
 
         return self.num_inlier_
@@ -209,7 +240,7 @@ class FigLine(Fig):
     def filteredByInlierPixels(self) -> bool:
         if (self.is_valid_ == True) and (self.num_inlier_ > 0):
             
-            # inlier点群の外接矩形/線分長(近似)を算出
+            # 線分長を算出
             self.len_lineseg_ = self.calcLenLineseg()
 
             # 線分長が閾値未満の場合は無効化
