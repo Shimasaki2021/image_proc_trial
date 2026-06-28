@@ -187,25 +187,26 @@ class FigLine(Fig):
         return self.is_valid_
 
     def extractLineSegPixels(self, pixels:np.ndarray, k=2.0) -> Tuple[np.ndarray, np.ndarray]:
-        # 点群の重心算出
+        # -- 点群の重心算出 --
         mean = np.mean(pixels, axis=0)
         centered = pixels - mean
 
-        # 主成分方向の標準偏差sigma算出
+        # -- 主成分方向の標準偏差sigma算出 --
         cov = np.cov(centered, rowvar=False, bias=True)
         eigenvalues, eigenvectors = np.linalg.eig(cov)
 
         idx = np.argmax(eigenvalues)
         pc1 = eigenvectors[:, idx]
 
+        #   固有ベクトル（第1主成分）への射影値
         proj = centered @ pc1
         sigma = np.std(proj)
 
-        # k * sigma以内の点を、線分を構成する点として抽出
+        # -- k * sigma以内の点を、線分を構成する点として抽出 --
         mask = np.abs(proj) <= k * sigma
         lineseg_pixels = pixels[mask]
 
-        # 両端点の抽出
+        # -- 両端点の抽出 --
         proj_filtered = proj[mask]
         min_idx = np.argmin(proj_filtered)
         max_idx = np.argmax(proj_filtered)

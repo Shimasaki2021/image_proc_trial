@@ -246,12 +246,6 @@ void FigLine::extractLineSegPixels(double k)
         }
         mean = mean * (1.0 / (double)N);
 
-        std::vector<Vec2> centered(N);
-        for(int i = 0; i < N; i++)
-        {
-            centered[i] = Vec2(inlier_pixels_[i]) - mean;
-        } 
-
         // -- 主成分方向の標準偏差sigma算出 --
 
         //   共分散行列
@@ -260,11 +254,13 @@ void FigLine::extractLineSegPixels(double k)
         double sxx = 0.0;
         double sxy = 0.0;
         double syy = 0.0;
+        Vec2 centered;
         for(int i = 0; i < N; i++) 
         {
-            sxx += centered[i].x_ * centered[i].x_;
-            sxy += centered[i].x_ * centered[i].y_;
-            syy += centered[i].y_ * centered[i].y_;
+            centered = Vec2(inlier_pixels_[i]) - mean;
+            sxx += centered.x_ * centered.x_;
+            sxy += centered.x_ * centered.y_;
+            syy += centered.y_ * centered.y_;
         }
         sxx /= N;
         sxy /= N;
@@ -299,11 +295,12 @@ void FigLine::extractLineSegPixels(double k)
         double proj_min = DBL_MAX;
         double proj_max = DBL_MIN;
 
-        //  要素削除後もindex位置がずれないよう、末尾からscan
+        //  要素削除後も、未処理要素のindex位置がずれないよう、末尾からscan
         for(int i = N-1; i >= 0; i--) 
         {
             // 固有ベクトル（第1主成分）への射影値
-            proj = centered[i].dot(pc1);
+            centered = Vec2(inlier_pixels_[i]) - mean;
+            proj = centered.dot(pc1);
 
             if(fabs(proj) > (k * sigma))
             {
