@@ -293,54 +293,38 @@ void FigLine::extractLineSegPixels(double k)
         }
         pc1 = v.normalize();
 
-        //    射影値
-        std::vector<double> proj(N);
-
-        for(int i = 0; i < N; i++)
-        {
-            proj[i] = centered[i].dot(pc1);
-        }
-
         // -- k * sigma以内の点を、線分を構成する点として抽出 --
+        // -- 両端点の抽出 --
+        double proj;
+        double proj_min = DBL_MAX;
+        double proj_max = DBL_MIN;
+
+        //  要素削除後もindex位置がずれないよう、末尾からscan
         for(int i = N-1; i >= 0; i--) 
         {
-            if(fabs(proj[i]) > (k * sigma))
+            // 固有ベクトル（第1主成分）への射影値
+            proj = centered[i].dot(pc1);
+
+            if(fabs(proj) > (k * sigma))
             {
+                // 射影値の絶対値（＝重心からの距離）が
                 // k * sigmaを超える点を線分を構成しない点(outlier)として除外
                 inlier_pixels_.erase(inlier_pixels_.begin() + i);
-                proj.erase(proj.begin() + i);
             }
-        }
-
-        // -- 両端点の抽出 --
-        double proj_min = proj[0];
-        double proj_max = proj[0];
-        int min_idx = -1;
-        int max_idx = -1;
-
-        N = proj.size();
-        for(int i = 0; i < N; i++) 
-        {
-            // 射影値が最小、最大の点を両端点として選択
-            if(proj[i] < proj_min)
+            else
             {
-                proj_min = proj[i];
-                min_idx = i;
+                // 射影値が最小、最大の点を両端点として選択
+                if(proj < proj_min)
+                {
+                    proj_min = proj;
+                    lineseg_pt0_ = inlier_pixels_[i]; // 端点(マイナス方向)
+                }
+                if(proj > proj_max)
+                {
+                    proj_max = proj;
+                    lineseg_pt1_ = inlier_pixels_[i]; // 端点(プラス方向)
+                }
             }
-            if(proj[i] > proj_max)
-            {
-                proj_max = proj[i];
-                max_idx = i;
-            }
-        }
-
-        if(min_idx != -1)
-        {
-            lineseg_pt0_ = inlier_pixels_[min_idx];
-        }
-        if(max_idx != -1)
-        {
-            lineseg_pt1_ = inlier_pixels_[max_idx];
         }
     }
 
