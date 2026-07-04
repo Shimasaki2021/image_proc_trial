@@ -64,10 +64,10 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
     if obj_type.figtype_ == FigType.Def.FIGTYPE_LINE_:
         target_fig = FigLine(cfg)
-        iou_th = 0.5
+        iou_th = cfg["LINE_IOU_TH"]
     else:
         target_fig = FigCircle(cfg)
-        iou_th = 0.1
+        iou_th = cfg["CIRCLE_IOU_TH"]
 
     num_iter = int(float(len(edge_pixels)) * float(cfg["RANSAC_NUM_ITER_PER_EDGE"]))
 
@@ -99,7 +99,7 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
     # 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
     #   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOP_K=-1とすればこの削除機能を無効化可能）
-    TOP_K = 200
+    TOP_K = -1
     boxes = [[det_obj.inlier_bbox_[0], det_obj.inlier_bbox_[1], det_obj.inlier_bbox_[2], det_obj.inlier_bbox_[3]] 
              for det_obj in det_objs]
     scores = [det_obj.num_inlier_ for det_obj in det_objs]
@@ -170,6 +170,9 @@ def main(img_fpath:str, cfg:Dict[str,Any]):
     img_in:np.ndarray = cv2.imread(img_fpath) 
 
     if img_in is not None:
+        # 乱数シード固定
+        np.random.seed(cfg["RANDOM_SEED"])
+
         img_fname = os.path.basename(img_fpath)
         img_fname_base = os.path.splitext(img_fname)[0]
 
@@ -206,7 +209,7 @@ def main(img_fpath:str, cfg:Dict[str,Any]):
 if __name__ == "__main__":
     cfg = {
         # RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
-        "RANSAC_NUM_ITER_PER_EDGE" : 6.0,
+        "RANSAC_NUM_ITER_PER_EDGE" : 4.0,
 
         # 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
         "INLIER_DIST_TH" : 1.0, 
@@ -223,8 +226,15 @@ if __name__ == "__main__":
         # 円の最小半径[pixel]
         "CIRCLE_MIN_R_TH" : 5,
 
+        # IOU
+        "LINE_IOU_TH": 0.10,
+        "CIRCLE_IOU_TH": 0.05,
+
         # 出力ディレクトリ
         "OUTPUT_DIR" : "output_py2",
+
+        # 乱数シード
+        "RANDOM_SEED": 1000,
     }
 
     args = sys.argv

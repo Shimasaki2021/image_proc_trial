@@ -47,6 +47,7 @@ class Fig:
     def __init__(self, cfg:Dict[str,Any]):
         self.is_valid_ = False
         self.num_inlier_ = 0
+        self.density_ = 0.0
         self.inlier_pixels_:np.ndarray = None
         self.inlier_bbox_:np.ndarray = None
 
@@ -57,6 +58,7 @@ class Fig:
     def reset(self):
         self.is_valid_ = False
         self.num_inlier_ = 0
+        self.density_ = 0.0
         self.inlier_pixels_ = None
         self.inlier_bbox_ = None
         return
@@ -70,11 +72,9 @@ class Fig:
     def create(self, px:np.ndarray):
         return
 
-    def densityFilter(self, density_th:float) -> bool:
-        return True
-
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
+        self.density_ = 0.0
         self.inlier_pixels_ = None
         self.inlier_bbox_ = None
         return self.num_inlier_
@@ -167,24 +167,24 @@ class FigLine(Fig):
 
         return
 
-    def calcLenLineseg(self) -> int:
+    @staticmethod
+    def calcLenLineseg(lineseg_pt:np.ndarray) -> int:
         len_lineseg = 0
 
-        if self.lineseg_pt_ is not None:
+        if lineseg_pt is not None:
             # 線分の両端点の長さを算出
-            vec = self.lineseg_pt_[1] - self.lineseg_pt_[0]
+            vec = lineseg_pt[1] - lineseg_pt[0]
             len_lineseg = int(math.sqrt(vec[0]*vec[0] + vec[1]*vec[1]))
 
         return len_lineseg
 
-    def densityFilter(self, density_th:float) -> bool:
-        # 点群密度がdensity_th未満の場合は無効化
-        min_inlier_th = int(density_th * float(self.len_lineseg_))
-
-        if self.num_inlier_ < min_inlier_th:
-            self.is_valid_ = False
-
-        return self.is_valid_
+    @staticmethod
+    def calcDensity(num_inlier:int, len_lineseg:int) -> float:
+        density = 0.0
+        if len_lineseg > 0:
+            density = float(num_inlier) / float(len_lineseg)
+        
+        return density
 
     def extractLineSegPixels(self, pixels:np.ndarray, k=2.0) -> Tuple[np.ndarray, np.ndarray]:
         # -- 点群の重心算出 --
@@ -194,13 +194,14 @@ class FigLine(Fig):
         # -- 主成分方向の標準偏差sigma算出 --
         cov = np.cov(centered, rowvar=False, bias=True)
         eigenvalues, eigenvectors = np.linalg.eig(cov)
+        sigma = np.sqrt(np.max(eigenvalues))
 
         idx = np.argmax(eigenvalues)
         pc1 = eigenvectors[:, idx]
 
         #   固有ベクトル（第1主成分）への射影値
         proj = centered @ pc1
-        sigma = np.std(proj)
+        # sigma = np.std(proj)
 
         # -- k * sigma以内の点を、線分を構成する点として抽出 --
         mask = np.abs(proj) <= k * sigma
@@ -228,8 +229,13 @@ class FigLine(Fig):
                 # 線分を構成する点のみにする
                 #   離れすぎている点(重心±kσを超えている点)を削除
                 (self.inlier_pixels_, self.lineseg_pt_) = self.extractLineSegPixels(pixels[mask], 2.0)
+
+                # 密度算出
+                self.len_lineseg_ = self.calcLenLineseg(self.lineseg_pt_)
+                self.density_ = self.calcDensity(self.num_inlier_, self.len_lineseg_)
             else:
                 self.num_inlier_ = 0
+                self.density_ = 0.0
 
             if self.num_inlier_ == 0:
                 self.inlier_pixels_ = None
@@ -240,16 +246,13 @@ class FigLine(Fig):
 
     def filteredByInlierPixels(self) -> bool:
         if (self.is_valid_ == True) and (self.num_inlier_ > 0):
-            
-            # 線分長を算出
-            self.len_lineseg_ = self.calcLenLineseg()
 
             # 線分長が閾値未満の場合は無効化
             if self.len_lineseg_ < self.line_min_len_th_:
                 self.is_valid_ = False
             else:
                 # 点群密度が閾値未満の場合は無効化
-                self.is_valid_ = self.densityFilter(self.inlier_dense_th_)
+                self.is_valid_ = self.density_ > self.inlier_dense_th_
         
         else:
             self.is_valid_ = False
@@ -392,18 +395,15 @@ class FigCircle(Fig):
             self.is_valid_ = True
 
         return
-    
-    def densityFilter(self, density_th:float) -> bool:
-        # 円周長を算出
-        len_circle = 2.0 * math.pi * float(self.r_)
 
-        # 点群密度がCIRCLE_INLIER_DENSE_TH未満の場合は無効化（num_inlier＝0）
-        min_inlier_th = int(len_circle * density_th)
+    @staticmethod
+    def calcDensity(num_inlier:int, r:float) -> float:
+        density = 0.0
+        if r > 0.0:
+            len_arc = 2.0 * math.pi * r
+            density = float(num_inlier) / len_arc
 
-        if self.num_inlier_ < min_inlier_th:
-            self.is_valid_ = False
-
-        return self.is_valid_
+        return density
 
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
         self.num_inlier_ = 0
@@ -425,8 +425,13 @@ class FigCircle(Fig):
 
             if self.num_inlier_ > self.min_inlier_th_:
                 self.inlier_pixels_ = copy.deepcopy(pixels[mask])
+
+                # 密度算出
+                self.density_ = self.calcDensity(self.num_inlier_, float(self.r_))
+
             else:
                 self.num_inlier_ = 0
+                self.density_ = 0.0
 
             if self.num_inlier_ == 0:
                 self.inlier_pixels_ = None
@@ -435,7 +440,7 @@ class FigCircle(Fig):
         return self.num_inlier_
 
     def filteredByInlierPixels(self) -> bool:
-        self.is_valid_ = self.densityFilter(self.inlier_dense_th_)
+        self.is_valid_ = self.density_ > self.inlier_dense_th_
         return self.is_valid_
 
     def erasePixels(self, img:np.ndarray) -> np.ndarray:

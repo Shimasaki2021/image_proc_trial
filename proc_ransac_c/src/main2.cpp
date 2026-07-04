@@ -11,6 +11,8 @@
 #include "fig.hpp"
 #include "debug.hpp"
 
+std::mt19937 rand_gen;
+
 std::pair<std::vector<int>, int> nmSuppression(
     const std::vector<CvRect>& boxes,
     const std::vector<int>& scores,
@@ -124,12 +126,12 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     if(obj_type.figtype_ == FigType::FIGTYPE_LINE_)
     {
         target_fig = std::make_shared<FigLine>(cfg);
-        iou_th = 0.5;
+        iou_th = strtof(cfg["LINE_IOU_TH"].c_str(), NULL);
     }
     else
     {
         target_fig = std::make_shared<FigCircle>(cfg);
-        iou_th = 0.1;
+        iou_th = strtof(cfg["CIRCLE_IOU_TH"].c_str(), NULL);
     }
 
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
@@ -169,7 +171,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
 
     // 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
     //   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOP_K=-1とすればこの削除機能を無効化可能）
-    const int TOP_K = 200;
+    const int TOP_K = -1;
     std::vector<CvRect> boxes;
     std::vector<int> scores;
     std::vector<int> sup_idx;
@@ -283,7 +285,7 @@ int main(int argc, char *argv[])
     CfgType cfg = 
     {
         // RANSAC繰り返し回数（エッジ点数に対する倍率を指定）
-        {"RANSAC_NUM_ITER_PER_EDGE", "6.0"},
+        {"RANSAC_NUM_ITER_PER_EDGE", "4.0"},
 
         // 検出図形（直線or円）との距離閾値(inlier閾値)[pixel]
         {"INLIER_DIST_TH", "1.0"},
@@ -300,8 +302,15 @@ int main(int argc, char *argv[])
         // 円の最小半径[pixel]
         {"CIRCLE_MIN_R_TH", "5"},
 
+        // IOU
+        {"LINE_IOU_TH", "0.10"},
+        {"CIRCLE_IOU_TH", "0.05"},
+
         // 出力ディレクトリ
         {"OUTPUT_DIR", "output_cpp2"},
+
+        // 乱数シード
+        {"RANDOM_SEED", "1000"},
     };
     int ret;
     
@@ -320,6 +329,10 @@ int main(int argc, char *argv[])
         FigList det_objs;
         std::chrono::system_clock::time_point time_s, time_e;
         double time_elapsed;
+        int random_seed;
+        
+        random_seed = strtol(cfg["RANDOM_SEED"].c_str(), NULL, 10);
+        rand_gen = std::mt19937(random_seed); // 乱数シード固定
 
         img_fpath = argv[1];
         img_in = cv::imread(img_fpath);

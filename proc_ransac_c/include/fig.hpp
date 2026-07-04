@@ -151,6 +151,7 @@ public:
     {
         is_valid_ = false;
         num_inlier_ = 0;
+        density_    = 0.0;
         inlier_pixels_.clear();
         inlier_bbox_.clear();
         return;
@@ -194,6 +195,7 @@ public:
 
     bool is_valid_;
     int  num_inlier_;
+    double density_;
     CvPointList inlier_pixels_;
     CvRect inlier_bbox_;
 
@@ -234,8 +236,8 @@ public:
     bool isEnableCreate(const CvPointList &sel_pixels) const override;
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
-    int calcLenLineseg(void) const;
-    bool densityFilter(double density_th);
+    static int calcLenLineseg(const cv::Point &lineseg_pt0, const cv::Point &lineseg_pt1);
+    static double calcDensity(int num_inlier, int len_lineseg);
     void extractLineSegPixels(double k);
     bool filteredByInlierPixels(void) override;
     void calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox_max, CvPointList &inter_px) const;
@@ -285,7 +287,7 @@ public:
     bool isEnableCreate(const CvPointList &sel_pixels) const override;
     void create(const CvPointList &sel_pixels) override;
     int countInlier(const CvPointList &pixels, double dist_th) override;
-    bool densityFilter(double density_th);
+    static double calcDensity(int num_inlier, int r);
     bool filteredByInlierPixels(void) override;
     void erasePixels(cv::Mat &img) const override;
     void draw(cv::Mat &img) const override;

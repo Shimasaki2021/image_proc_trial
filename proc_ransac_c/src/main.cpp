@@ -8,6 +8,8 @@
 #include "fig.hpp"
 #include "debug.hpp"
 
+std::mt19937 rand_gen;
+
 void extractObjectRANSAC(const CvPointList &edge_pixels, 
                          FigType &target_obj_type, 
                          std::shared_ptr<Fig> &det_obj,
@@ -184,6 +186,9 @@ int main(int argc, char *argv[])
 
         // 出力ディレクトリ
         {"OUTPUT_DIR", "output_cpp"},
+
+        // 乱数シード
+        {"RANDOM_SEED", "1000"},
     };
     int ret;
     
@@ -202,6 +207,10 @@ int main(int argc, char *argv[])
         FigList det_objs;
         std::chrono::system_clock::time_point time_s, time_e;
         double time_elapsed;
+        int random_seed;
+        
+        random_seed = strtol(cfg["RANDOM_SEED"].c_str(), NULL, 10);
+        rand_gen = std::mt19937(random_seed); // 乱数シード固定
 
         img_fpath = argv[1];
         img_in = cv::imread(img_fpath);

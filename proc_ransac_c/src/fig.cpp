@@ -1,6 +1,8 @@
 
 #include "fig.hpp"
 
+extern std::mt19937 rand_gen;
+
 // === Fig ===
 
 Fig& Fig::operator=(const Fig& f)
@@ -123,13 +125,9 @@ void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pix
     if(num_pixels >= 2)
     {
         // pixelsの中からランダムに2点を選ぶ（重複禁止）
-        std::random_device rd;
-        std::mt19937 rand_gen;
         std::uniform_int_distribution<size_t> dist(0, num_pixels-1);
         size_t idx1, idx2;
         cv::Point px1, px2;
-
-        rand_gen = std::mt19937(rd());
 
         idx1 = dist(rand_gen);
         do {
@@ -197,39 +195,31 @@ void FigLine::create(const CvPointList &sel_pixels)
     return;
 }
 
-int FigLine::calcLenLineseg(void) const
+int FigLine::calcLenLineseg(const cv::Point &lineseg_pt0, const cv::Point &lineseg_pt1)
 {
-#if 1
     int len_lineseg;
     cv::Point vec;
 
-    vec.x = lineseg_pt1_.x - lineseg_pt0_.x;
-    vec.y = lineseg_pt1_.y - lineseg_pt0_.y;
+    vec.x = lineseg_pt1.x - lineseg_pt0.x;
+    vec.y = lineseg_pt1.y - lineseg_pt0.y;
     len_lineseg = int(sqrt((double)(vec.x * vec.x + vec.y * vec.y)));
-#else
-    int len_lineseg;
-    int bbox_w, bbox_h;
-
-    bbox_w = inlier_bbox_.pt_max_.x - inlier_bbox_.pt_min_.x;
-    bbox_h = inlier_bbox_.pt_max_.y - inlier_bbox_.pt_min_.y;
-    len_lineseg = (bbox_w > bbox_h) ? bbox_w : bbox_h;
-#endif
 
     return len_lineseg;
 }
 
-bool FigLine::densityFilter(double density_th)
+double FigLine::calcDensity(int num_inlier, int len_lineseg)
 {
-    int min_inlier_th;
-    min_inlier_th = (int)(density_th * (double)len_lineseg_);
+    double density;
 
-    if(num_inlier_ < min_inlier_th)
+    density = 0.0;
+    if(len_lineseg > 0)
     {
-        is_valid_ = false;
+        density = (double)num_inlier / (double)len_lineseg;
     }
 
-    return is_valid_;
+    return density;
 }
+
 void FigLine::extractLineSegPixels(double k)
 {
     int N;
@@ -355,10 +345,15 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
             // 線分を構成する点のみにする
             //   離れすぎている点(重心±kσを超えている点)を削除
             extractLineSegPixels(2.0);
+
+            // 密度算出
+            len_lineseg_ = calcLenLineseg(lineseg_pt0_, lineseg_pt1_);
+            density_ = calcDensity(num_inlier_, len_lineseg_);
         }
         else
         {
             num_inlier_ = 0;
+            density_ = 0.0;
         }
 
         if(num_inlier_ == 0)
@@ -377,9 +372,6 @@ bool FigLine::filteredByInlierPixels(void)
 {
     if((is_valid_ == true) && (num_inlier_ > 0))
     {
-        // 線分長を算出
-        len_lineseg_ = calcLenLineseg();
-
         // 線分長が閾値未満の場合は無効化
         if(len_lineseg_ < line_min_len_th_)
         {
@@ -388,7 +380,7 @@ bool FigLine::filteredByInlierPixels(void)
         else
         {
             // 点群密度が閾値未満の場合は無効化
-            is_valid_ = densityFilter(inlier_dense_th_);
+            is_valid_ = density_ > inlier_dense_th_; 
         }
     }
     else
@@ -527,13 +519,9 @@ void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_p
     if(num_pixels >= 3)
     {
         // pixelsの中からランダムに3点を選ぶ（重複禁止）
-        std::random_device rd;
-        std::mt19937 rand_gen;
         std::uniform_int_distribution<size_t> dist(0, num_pixels-1);
         size_t idx1, idx2, idx3;
         cv::Point px1, px2, px3;
-        
-        rand_gen = std::mt19937(rd());
 
         idx1 = dist(rand_gen);
         do {
@@ -640,6 +628,21 @@ void FigCircle::create(const CvPointList &sel_pixels)
     return;
 }
 
+double FigCircle::calcDensity(int num_inlier, int r)
+{
+    double density;
+    double len_arc;
+
+    density = 0.0;
+    if(r > 0)
+    {
+        len_arc = 2.0 * M_PI * (double)r;
+        density = (double)num_inlier / len_arc;
+    }
+
+    return density;
+}
+
 int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
 {
     num_inlier_ = 0;
@@ -678,10 +681,13 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
+            // 密度算出
+            density_ = calcDensity(num_inlier_, r_);
         }
         else
         {
             num_inlier_ = 0;
+            density_ = 0.0;
         }
 
         if(num_inlier_ == 0)
@@ -694,26 +700,9 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
     return num_inlier_;
 }
 
-bool FigCircle::densityFilter(double density_th)
-{
-    double len_circle;
-    double min_inlier_th;
-
-    len_circle = 2.0 * M_PI * (double)r_;
-
-    min_inlier_th = (int)(len_circle * density_th);
-
-    if(num_inlier_ < min_inlier_th)
-    {
-        is_valid_ = false;
-    }
-
-    return is_valid_;
-}
-
 bool FigCircle::filteredByInlierPixels(void)
 {
-    is_valid_ = densityFilter(inlier_dense_th_);
+    is_valid_ = density_ > inlier_dense_th_;
     return is_valid_;
 }
 

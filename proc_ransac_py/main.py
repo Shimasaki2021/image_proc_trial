@@ -28,19 +28,22 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
         target_fig.reset()
 
-        # エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
+        # 観測データのサンプリング
+        #   エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
         choise_pixels = target_fig.choiseRandomPixels(edge_pixels)
 
         if target_fig.isEnableCreate(choise_pixels) == True:
 
-            # 抽出した点から直線／円を作成
+            # モデル作成（抽出した点から直線／円を作成）
             target_fig.create(choise_pixels)
 
-            # 作成した直線／円周上の点の数（inlier）をカウント
+            # モデル評価
+            #   作成した直線／円周上の点の数（inlier）をカウント、密度算出
+            #   inlier点群の特徴抽出（外接矩形）も実行
             num_inlier = target_fig.countInlier(edge_pixels, target_fig.dist_th_)
-
-            # inlier点群の特徴抽出（外接矩形）、フィルタリング
             target_fig.calcInlierBBox()
+
+            # 最良モデルの採用
             is_valid = target_fig.filteredByInlierPixels()
 
             if (is_valid == True) and (num_inlier > num_max_inlier):
@@ -112,6 +115,9 @@ def main(img_fpath:str, cfg:Dict[str,Any]):
     img_in:np.ndarray = cv2.imread(img_fpath) 
 
     if img_in is not None:
+        # 乱数シード固定
+        np.random.seed(cfg["RANDOM_SEED"])
+
         img_fname = os.path.basename(img_fpath)
         img_fname_base = os.path.splitext(img_fname)[0]
 
@@ -167,6 +173,9 @@ if __name__ == "__main__":
 
         # 出力ディレクトリ
         "OUTPUT_DIR" : "output_py",
+
+        # 乱数シード
+        "RANDOM_SEED": 1000,
     }
 
     args = sys.argv
