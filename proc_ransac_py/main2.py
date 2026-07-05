@@ -30,7 +30,7 @@ def nmSuppression(boxes:np.ndarray,
     if len(boxes) == 0:
         return (np.array([], dtype=np.int64), 0)
 
-    keep = np.zeros(len(scores), dtype=np.int64)
+    keep  = np.zeros(len(scores), dtype=np.int64)
     count = 0
 
     x1 = boxes[:, 0]
@@ -90,10 +90,10 @@ def extractObjectRANSAC(edge_pixels:np.ndarray,
 
     if obj_type.figtype_ == FigType.Def.FIGTYPE_LINE_:
         target_fig = FigLine(cfg)
-        iou_th = cfg["LINE_IOU_TH"]
+        iou_th     = cfg["LINE_IOU_TH"]
     else:
         target_fig = FigCircle(cfg)
-        iou_th = cfg["CIRCLE_IOU_TH"]
+        iou_th     = cfg["CIRCLE_IOU_TH"]
 
     num_iter = int(float(len(edge_pixels)) * float(cfg["RANSAC_NUM_ITER_PER_EDGE"]))
 
