@@ -62,6 +62,11 @@ void Fig::calcInlierBBox(void)
     return;
 }
 
+/**
+ * @brief エッジ画像から、モデル周辺の点群(inlier)を削除
+ * 
+ * @param img [in,out] エッジ画像, 削除後のエッジ画像
+ */
 void Fig::erasePixels(cv::Mat &img) const
 {
     if((is_valid_ == true) && (num_inlier_ > 0))
@@ -114,7 +119,14 @@ void FigLine::operator=(const std::shared_ptr<Fig> &p)
     return;
 }
 
-void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
+/**
+ * @brief 直線作成に必要な点(2点)をランダムに抽出（重複禁止）
+ * 
+ * @param pixels     [in]  点群 [[x0,y0][x1,y1],...]
+ * @param sel_pixels [out] 直線作成に必要な点(2点) [[x0,y0][x1,y1]]
+ */
+void FigLine::choiseRandomPixels(const CvPointList &pixels, 
+                                 CvPointList       &sel_pixels) const
 {
     size_t num_pixels;
 
@@ -126,7 +138,7 @@ void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pix
     {
         // pixelsの中からランダムに2点を選ぶ（重複禁止）
         std::uniform_int_distribution<size_t> dist(0, num_pixels-1);
-        size_t idx1, idx2;
+        size_t    idx1, idx2;
         cv::Point px1, px2;
 
         idx1 = dist(rand_gen);
@@ -141,6 +153,13 @@ void FigLine::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pix
     return;
 }
 
+/**
+ * @brief 直線を作成可能かどうかを判定
+ * 
+ * @param sel_pixels [in]  直線作成に必要な点(2点) [[x0,y0][x1,y1]]
+ * @return true      [out] 判定結果（可能）
+ * @return false     [out] 判定結果（不可能）
+ */
 bool FigLine::isEnableCreate(const CvPointList &sel_pixels) const
 {
     bool is_enable;
@@ -159,6 +178,11 @@ bool FigLine::isEnableCreate(const CvPointList &sel_pixels) const
     return is_enable;
 }
 
+/**
+ * @brief 直線作成 (ax+by+c=0)
+ * 
+ * @param sel_pixels [in] 直線作成に必要な点(2点) [[x0,y0][x1,y1]]
+ */
 void FigLine::create(const CvPointList &sel_pixels) 
 {
     if(sel_pixels.size() >= 2)
@@ -195,6 +219,13 @@ void FigLine::create(const CvPointList &sel_pixels)
     return;
 }
 
+/**
+ * @brief 線分長算出
+ * 
+ * @param lineseg_pt0 [in]  線分の両端点 [x0,y0]
+ * @param lineseg_pt1 [in]  線分の両端点 [x1,y1]
+ * @return            [out] 線分長
+ */
 int FigLine::calcLenLineseg(const cv::Point &lineseg_pt0, const cv::Point &lineseg_pt1)
 {
     int len_lineseg;
@@ -207,6 +238,13 @@ int FigLine::calcLenLineseg(const cv::Point &lineseg_pt0, const cv::Point &lines
     return len_lineseg;
 }
 
+/**
+ * @brief 線分の密度算出
+ * 
+ * @param num_inlier  [in]  線分を構成する点群の数(inlier)
+ * @param len_lineseg [in]  線分長
+ * @return            [out] 密度
+ */
 double FigLine::calcDensity(int num_inlier, int len_lineseg)
 {
     double density;
@@ -220,6 +258,11 @@ double FigLine::calcDensity(int num_inlier, int len_lineseg)
     return density;
 }
 
+/**
+ * @brief 線分を構成する点群、線分の両端点を抽出
+ * 
+ * @param k [in] 直線方向の標準偏差σの倍率
+ */
 void FigLine::extractLineSegPixels(double k)
 {
     int N;
@@ -236,9 +279,9 @@ void FigLine::extractLineSegPixels(double k)
         }
         mean = mean * (1.0 / (double)N);
 
-        // -- 主成分方向の標準偏差sigma算出 --
+        // -- 直線の方向（主成分方向）の標準偏差sigma算出 --
 
-        //   共分散行列
+        // 共分散行列
         //   [ sxx  sxy ]
         //   [ sxy  syy ]
         double sxx = 0.0;
@@ -256,16 +299,16 @@ void FigLine::extractLineSegPixels(double k)
         sxy /= N;
         syy /= N;
 
-        //   固有値（解析解）算出
-        //     主成分方向の標準偏差sigma = 最大固有値
-        double trace = sxx + syy;
+        // 共分散行列の固有値算出
+        double trace    = sxx + syy;
         double det_part = sqrt((sxx - syy) * (sxx - syy) / 4.0 + sxy * sxy);
 
-        double lambda1 = trace / 2.0 + det_part;  // 最大固有値
+        // sigma = √ 固有値lambda1,lambda2の大きい方
+        double lambda1 = trace / 2.0 + det_part;
         // double lambda2 = trace / 2.0 - det_part;
-        double sigma = sqrt(lambda1);
+        double sigma   = sqrt(lambda1);
 
-        //   固有ベクトル（第1主成分）
+        // 直線の方向ベクトル（大きい方の固有値に対応する固有ベクトル）
         Vec2 v;
         Vec2 pc1;
         if(fabs(sxy) > 1e-12) 
@@ -280,35 +323,34 @@ void FigLine::extractLineSegPixels(double k)
         pc1 = v.normalize();
 
         // -- k * sigma以内の点を、線分を構成する点として抽出 --
-        // -- 両端点の抽出 --
+        // -- 両端点(lineseg_pt0_, lineseg_pt1_)の抽出 --
         double proj;
         double proj_min = DBL_MAX;
         double proj_max = DBL_MIN;
 
-        //  要素削除後も、未処理要素のindex位置がずれないよう、末尾からscan
+        // 要素削除後も、未処理要素のindex位置がずれないよう、末尾からscan
         for(int i = N-1; i >= 0; i--) 
         {
-            // 固有ベクトル（第1主成分）への射影値
+            // 直線方向ベクトル(pc1)への射影値 ＝ 重心から各点までの距離（符号付き）
             centered = Vec2(inlier_pixels_[i]) - mean;
             proj = centered.dot(pc1);
 
             if(fabs(proj) > (k * sigma))
             {
-                // 射影値の絶対値（＝重心からの距離）が
-                // k * sigmaを超える点を線分を構成しない点(outlier)として除外
+                // 距離がk*sigma以下の点を線分を構成する点として抽出
                 inlier_pixels_.erase(inlier_pixels_.begin() + i);
             }
             else
             {
-                // 射影値が最小、最大の点を両端点として選択
+                // 距離（符号付き）が最小、最大の点を両端点として選択
                 if(proj < proj_min)
                 {
-                    proj_min = proj;
+                    proj_min     = proj;
                     lineseg_pt0_ = inlier_pixels_[i]; // 端点(マイナス方向)
                 }
                 if(proj > proj_max)
                 {
-                    proj_max = proj;
+                    proj_max     = proj;
                     lineseg_pt1_ = inlier_pixels_[i]; // 端点(プラス方向)
                 }
             }
@@ -318,6 +360,17 @@ void FigLine::extractLineSegPixels(double k)
     return;
 }
 
+/**
+ * @brief 線分周辺の点(inlier)の数をカウント
+ * 
+ * @param pixels   [in]  点群 [[x0,y0][x1,y1]...]
+ * @param dist_th  [in]  距離閾値[pixel]
+ * @return         [out] 線分周辺の点(inlier)の数
+ * @note
+ *    以下も実行
+ *     - 線分を構成する点群、線分の両端点を抽出
+ *     - 密度算出（密度:inlier点数/線分長）
+ */
 int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 {
     num_inlier_ = 0;
@@ -328,13 +381,14 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
     {
         double dist;
 
-        // 点と直線の距離 < 閾値 を満たす点の数をカウント
         for(const auto &px : pixels)
         {
+            // 点と直線の距離算出
             dist = std::abs(a_ * (double)px.x + b_ * (double)px.y + c_) / sqrt_a2_plus_b2_;
 
             if(dist < dist_th)
             {
+                // inlier数カウント
                 num_inlier_++;
                 inlier_pixels_.push_back(px);
             }
@@ -342,18 +396,17 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
 
         if(num_inlier_ > min_inlier_th_)
         {
-            // 線分を構成する点のみにする
-            //   離れすぎている点(重心±kσを超えている点)を削除
+            // 線分を構成する点群、線分の両端点を抽出
             extractLineSegPixels(2.0);
 
             // 密度算出
             len_lineseg_ = calcLenLineseg(lineseg_pt0_, lineseg_pt1_);
-            density_ = calcDensity(num_inlier_, len_lineseg_);
+            density_     = calcDensity(num_inlier_, len_lineseg_);
         }
         else
         {
             num_inlier_ = 0;
-            density_ = 0.0;
+            density_    = 0.0;
         }
 
         if(num_inlier_ == 0)
@@ -368,6 +421,12 @@ int FigLine::countInlier(const CvPointList &pixels, double dist_th)
     return num_inlier_;
 }
 
+/**
+ * @brief inlier点群の密度等で直線をフィルタリング（有効、無効判定）
+ * 
+ * @return true  [out] 有効
+ * @return false [out] 無効 
+ */
 bool FigLine::filteredByInlierPixels(void)
 {
     if((is_valid_ == true) && (num_inlier_ > 0))
@@ -444,8 +503,8 @@ void FigLine::calcIntersectBBox(const cv::Point &bbox_min, const cv::Point &bbox
 
 void FigLine::draw(cv::Mat &img) const
 {
-    const cv::Scalar COL = cv::Scalar(0,255,255);
-    const double ALPHA = 0.6;
+    const cv::Scalar COL   = cv::Scalar(0,255,255);
+    const double     ALPHA = 0.6;
 
     CvPointList inter_px;
 
@@ -508,7 +567,14 @@ void FigCircle::operator=(const std::shared_ptr<Fig> &p)
     return;
 }
 
-void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_pixels) const
+/**
+ * @brief 円作成に必要な点(3点)をランダムに抽出（重複禁止）
+ * 
+ * @param pixels     [in]  点群 [[x0,y0][x1,y1],...]
+ * @param sel_pixels [out] 円作成に必要な点(3点) [[x0,y0][x1,y1][x2,y2]]
+ */
+void FigCircle::choiseRandomPixels(const CvPointList &pixels, 
+                                   CvPointList       &sel_pixels) const
 {
     size_t num_pixels;
 
@@ -520,7 +586,7 @@ void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_p
     {
         // pixelsの中からランダムに3点を選ぶ（重複禁止）
         std::uniform_int_distribution<size_t> dist(0, num_pixels-1);
-        size_t idx1, idx2, idx3;
+        size_t    idx1, idx2, idx3;
         cv::Point px1, px2, px3;
 
         idx1 = dist(rand_gen);
@@ -537,6 +603,13 @@ void FigCircle::choiseRandomPixels(const CvPointList &pixels, CvPointList &sel_p
     return;
 }
 
+/**
+ * @brief 円を作成可能かどうかを判定
+ * 
+ * @param sel_pixels [in]  円作成に必要な点(3点) [[x0,y0][x1,y1][x2,y2]]
+ * @return true      [out] 判定結果（可能）
+ * @return false     [out] 判定結果（不可能）
+ */
 bool FigCircle::isEnableCreate(const CvPointList &sel_pixels) const
 {
     bool is_enable;
@@ -570,6 +643,11 @@ bool FigCircle::isEnableCreate(const CvPointList &sel_pixels) const
     return is_enable;
 }
 
+/**
+ * @brief 円作成 (x^2 + y^2 + ax + by + c = 0)
+ * 
+ * @param sel_pixels [in] 円作成に必要な点(3点) [[x0,y0][x1,y1][x2,y2]]
+ */
 void FigCircle::create(const CvPointList &sel_pixels) 
 {
     if(sel_pixels.size() >= 3)
@@ -628,6 +706,13 @@ void FigCircle::create(const CvPointList &sel_pixels)
     return;
 }
 
+/**
+ * @brief 円の密度算出
+ * 
+ * @param num_inlier [in]  円を構成する点群の数(inlier)
+ * @param r          [in]  円の半径
+ * @return           [out] 密度
+ */
 double FigCircle::calcDensity(int num_inlier, int r)
 {
     double density;
@@ -643,6 +728,16 @@ double FigCircle::calcDensity(int num_inlier, int r)
     return density;
 }
 
+/**
+ * @brief 円周辺の点(inlier)の数をカウント
+ * 
+ * @param pixels  [in] 点群 [[x0,y0][x1,y1]...]
+ * @param dist_th [in] 距離閾値[pixel]
+ * @return        [out] 円周辺の点(inlier)の数
+  * @note
+ *    以下も実行
+ *     - 密度算出（密度:inlier点数/円周長）
+ */
 int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
 {
     num_inlier_ = 0;
@@ -700,16 +795,27 @@ int FigCircle::countInlier(const CvPointList &pixels, double dist_th)
     return num_inlier_;
 }
 
+/**
+ * @brief inlier点群の密度等で円をフィルタリング（有効、無効判定）
+ * 
+ * @return true  [out] 有効
+ * @return false [out] 無効
+ */
 bool FigCircle::filteredByInlierPixels(void)
 {
     is_valid_ = density_ > inlier_dense_th_;
     return is_valid_;
 }
 
+/**
+ * @brief エッジ画像から、円周辺の点群(inlier)を削除
+ * 
+ * @param img [in,out] エッジ画像, 削除後のエッジ画像
+ */
 void FigCircle::erasePixels(cv::Mat &img) const
 {
-    const cv::Scalar COL = cv::Scalar(0,0,0);
-    const int MARGIN = 2;
+    const cv::Scalar COL    = cv::Scalar(0,0,0);
+    const int        MARGIN = 2;
 
     if(is_valid_ == true)
     {
@@ -720,8 +826,8 @@ void FigCircle::erasePixels(cv::Mat &img) const
 }
 void FigCircle::draw(cv::Mat &img) const
 {
-    const cv::Scalar COL = cv::Scalar(0,255,0);
-    const double ALPHA = 0.6;
+    const cv::Scalar COL   = cv::Scalar(0,255,0);
+    const double     ALPHA = 0.6;
 
     cv::Mat img_draw_layer;
 

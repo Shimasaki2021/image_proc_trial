@@ -3,7 +3,7 @@ import math
 import cv2
 import numpy as np
 from enum import IntEnum, auto
-from typing import List,Dict,Tuple,Any
+from typing import List,Dict,Tuple,Any,override
 from typing_extensions import deprecated
 
 X = 0
@@ -15,8 +15,8 @@ class FigType:
         FIGTYPE_LINE_   = auto()
         FIGTYPE_NONE_   = auto()
 
-    def __init__(self):
-        self.figtype_ = FigType.Def.FIGTYPE_CIRCLE_
+    def __init__(self, type=Def.FIGTYPE_CIRCLE_):
+        self.figtype_ = type
         return
 
     def next(self):
@@ -44,23 +44,26 @@ class FigType:
         return ret_str
 
 class Fig:
-    def __init__(self, cfg:Dict[str,Any]):
-        self.is_valid_ = False
-        self.num_inlier_ = 0
-        self.density_ = 0.0
-        self.inlier_pixels_:np.ndarray = None
-        self.inlier_bbox_:np.ndarray = None
+    """モデル（直線 or 円）
+    """
 
-        self.dist_th_ = float(cfg["INLIER_DIST_TH"])
+    def __init__(self, cfg:Dict[str,Any]):
+        self.is_valid_   = False
+        self.num_inlier_ = 0
+        self.density_    = 0.0
+        self.inlier_pixels_:np.ndarray = None
+        self.inlier_bbox_:np.ndarray   = None
+
+        self.dist_th_       = float(cfg["INLIER_DIST_TH"])
         self.min_inlier_th_ = int(cfg["INLIER_NUM_MIN_TH"])
         return
     
     def reset(self):
-        self.is_valid_ = False
-        self.num_inlier_ = 0
-        self.density_ = 0.0
+        self.is_valid_      = False
+        self.num_inlier_    = 0
+        self.density_       = 0.0
         self.inlier_pixels_ = None
-        self.inlier_bbox_ = None
+        self.inlier_bbox_   = None
         return
 
     def choiseRandomPixels(self, pixels:np.ndarray) -> np.ndarray:
@@ -73,10 +76,10 @@ class Fig:
         return
 
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
-        self.num_inlier_ = 0
-        self.density_ = 0.0
+        self.num_inlier_    = 0
+        self.density_       = 0.0
         self.inlier_pixels_ = None
-        self.inlier_bbox_ = None
+        self.inlier_bbox_   = None
         return self.num_inlier_
 
     def calcInlierBBox(self):
@@ -93,6 +96,12 @@ class Fig:
         # return self.is_valid_
 
     def erasePixels(self, img:np.ndarray) -> np.ndarray:
+        """エッジ画像から、モデル周辺の点群(inlier)を削除
+        Args:
+            img (np.ndarray): [in] エッジ画像
+        Returns:
+            np.ndarray: [out] 削除後のエッジ画像
+        """
         if (self.is_valid_ == True) and (self.inlier_pixels_ is not None):
             # inlier点を削除(0塗りつぶし)する
 
@@ -110,6 +119,8 @@ class Fig:
         return val
 
 class FigLine(Fig):
+    """直線モデル（ax+by+c=0）
+    """
 
     def __init__(self, cfg:Dict[str,Any]):
         super().__init__(cfg)
@@ -127,11 +138,24 @@ class FigLine(Fig):
         self.line_min_len_th_ = int(cfg["LINE_MIN_LEN_TH"])
         return
 
+    @override
     def choiseRandomPixels(self, pixels:np.ndarray) -> np.ndarray:
-        # pixelsの中からランダムに2点を選ぶ（重複禁止）
+        """直線作成に必要な点(2点)をランダムに抽出（重複禁止）
+        Args:
+            pixels (np.ndarray): [in] 点群 [[x0,y0][x1,y1],...]
+        Returns:
+            np.ndarray: [out] 直線作成に必要な点(2点) [[x0,y0][x1,y1]]
+        """
         return pixels[np.random.choice(len(pixels), 2, False)]
 
+    @override
     def isEnableCreate(self, px:np.ndarray) -> bool:
+        """直線を作成可能かどうかを判定
+        Args:
+            px (np.ndarray): [in] 直線作成に必要な点(2点) [[x0,y0][x1,y1]]
+        Returns:
+            bool: [out] 判定結果(True:可能、False:不可能)
+        """
         is_create = True
 
         (x0,y0) = px[0]
@@ -143,7 +167,12 @@ class FigLine(Fig):
 
         return is_create
 
+    @override
     def create(self, px:np.ndarray):
+        """直線作成 (ax+by+c=0)
+        Args:
+            px (np.ndarray): [in] 直線作成に必要な点(2点) [[x0,y0][x1,y1]]
+        """
         pxf = px.astype(float)
         (x0,y0) = pxf[0]
         (x1,y1) = pxf[1]
@@ -169,82 +198,131 @@ class FigLine(Fig):
 
     @staticmethod
     def calcLenLineseg(lineseg_pt:np.ndarray) -> int:
+        """線分長算出
+        Args:
+            lineseg_pt (np.ndarray): [in] 線分の両端点 [[x0,y0][x1,y1]]
+        Returns:
+            int: [out] 線分長
+        """
         len_lineseg = 0
 
         if lineseg_pt is not None:
             # 線分の両端点の長さを算出
-            vec = lineseg_pt[1] - lineseg_pt[0]
+            vec         = lineseg_pt[1] - lineseg_pt[0]
             len_lineseg = int(math.sqrt(vec[0]*vec[0] + vec[1]*vec[1]))
 
         return len_lineseg
 
     @staticmethod
     def calcDensity(num_inlier:int, len_lineseg:int) -> float:
+        """線分の密度算出
+        Args:
+            num_inlier (int):  [in] 線分を構成する点群の数(inlier)
+            len_lineseg (int): [in] 線分長
+        Returns:
+            float: [out] 密度
+        """
         density = 0.0
         if len_lineseg > 0:
             density = float(num_inlier) / float(len_lineseg)
         
         return density
 
-    def extractLineSegPixels(self, pixels:np.ndarray, k=2.0) -> Tuple[np.ndarray, np.ndarray]:
-        # -- 点群の重心算出 --
-        mean = np.mean(pixels, axis=0)
-        centered = pixels - mean
+    def extractLineSegPixels(self, inlier_pixels:np.ndarray, k=2.0) -> Tuple[np.ndarray, np.ndarray]:
+        """線分を構成する点群、線分の両端点を抽出
+        Args:
+            pixels (np.ndarray): [in] モデル周辺の点群(inlier) [[x0,y0][x1,y1]...]
+            k (float, optional): [in] 直線方向の標準偏差σの倍率. Defaults to 2.0.
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: 
+                - [out] 線分を構成する点群 [[x0,y0][x1,y1]...]
+                - [out] 線分の両端点 [[x0,y0][x1,y1]]
+        """
+        # -- 点群の重心mean、重心meanを原点とする各点の位置ベクトル --
+        #   centered = [px[0]-mean, px[1]-mean,...]
+        mean     = np.mean(inlier_pixels, axis=0)
+        centered = inlier_pixels - mean
 
-        # -- 主成分方向の標準偏差sigma算出 --
+        # -- 直線の方向（主成分方向）の標準偏差sigma算出 --
         cov = np.cov(centered, rowvar=False, bias=True)
         eigenvalues, eigenvectors = np.linalg.eig(cov)
-        sigma = np.sqrt(np.max(eigenvalues))
 
+        # sigma = √ 固有値eigenvalues[0],eigenvalues[1]の大きい方
+        sigma = np.sqrt(np.max(eigenvalues))
+        # 直線の方向ベクトル（大きい方の固有値に対応する固有ベクトル）
         idx = np.argmax(eigenvalues)
         pc1 = eigenvectors[:, idx]
 
-        #   固有ベクトル（第1主成分）への射影値
+        # 直線方向ベクトル(pc1)への射影値 ＝ 重心から各点までの距離（符号付き）
+        #   proj = [centered[0]・pc1, centered[1]・pc1, ...] 
+        #     ※各点位置ベクトルcentered[]と直線方向ベクトルpc1の内積
         proj = centered @ pc1
-        # sigma = np.std(proj)
 
-        # -- k * sigma以内の点を、線分を構成する点として抽出 --
-        mask = np.abs(proj) <= k * sigma
-        lineseg_pixels = pixels[mask]
+        # -- k * sigma以内の点を、線分を構成する点群lineseg_pixelsとして抽出 --
+        mask           = np.abs(proj) <= k * sigma
+        lineseg_pixels = inlier_pixels[mask]
 
-        # -- 両端点の抽出 --
+        # -- 両端点endpointsの抽出 --
         proj_filtered = proj[mask]
-        min_idx = np.argmin(proj_filtered)
-        max_idx = np.argmax(proj_filtered)
+        min_idx   = np.argmin(proj_filtered)
+        max_idx   = np.argmax(proj_filtered)
         endpoints = np.array([lineseg_pixels[min_idx], lineseg_pixels[max_idx]])
 
         return (lineseg_pixels, endpoints)
 
+    @override
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
+        """線分周辺の点(inlier)の数をカウント
+        Args:
+            pixels (np.ndarray): [in] 点群 [[x0,y0][x1,y1]...]
+            dist_th (float):     [in] 距離閾値[pixel]
+        Returns:
+            int: [out] 線分周辺の点(inlier)の数
+        Notes:
+            以下も実行
+            
+            * 線分を構成する点群、線分の両端点を抽出
+            * 密度算出（密度:inlier点数/線分長）
+        """
         self.num_inlier_ = 0
 
         if self.is_valid_ == True:
-            # 点と直線の距離 < 閾値 を満たす点の数をカウント
+            # 点群pixels[]と直線の距離算出
+            #    dist[] = [dist0, dist1, ...]
             dist = np.abs((self.a_ * pixels[:,X] + self.b_ * pixels[:,Y] + self.c_)) / self.sqrt_a2_plus_b2_
+
+            # 距離<閾値:true, 距離≧閾値:false
+            #   mask[] = [true, false, ...]
             mask = dist < dist_th
 
+            # inlier数カウント
+            #   mask[]の中でtrue（≠0）の数をカウント
             self.num_inlier_ = np.count_nonzero(mask)
 
             if self.num_inlier_ > self.min_inlier_th_:
-                # 線分を構成する点のみにする
-                #   離れすぎている点(重心±kσを超えている点)を削除
+                # 線分を構成する点群、線分の両端点を抽出
                 (self.inlier_pixels_, self.lineseg_pt_) = self.extractLineSegPixels(pixels[mask], 2.0)
 
                 # 密度算出
                 self.len_lineseg_ = self.calcLenLineseg(self.lineseg_pt_)
-                self.density_ = self.calcDensity(self.num_inlier_, self.len_lineseg_)
+                self.density_     = self.calcDensity(self.num_inlier_, self.len_lineseg_)
             else:
                 self.num_inlier_ = 0
-                self.density_ = 0.0
+                self.density_    = 0.0
 
             if self.num_inlier_ == 0:
                 self.inlier_pixels_ = None
-                self.lineseg_pt_ = None
-                self.inlier_bbox_ = None
+                self.lineseg_pt_    = None
+                self.inlier_bbox_   = None
 
         return self.num_inlier_
 
+    @override
     def filteredByInlierPixels(self) -> bool:
+        """inlier点群の密度等で直線をフィルタリング（有効、無効判定）
+        Returns:
+            bool: [out] True:有効、False:無効
+        """
         if (self.is_valid_ == True) and (self.num_inlier_ > 0):
 
             # 線分長が閾値未満の場合は無効化
@@ -291,6 +369,7 @@ class FigLine(Fig):
 
         return np.array(inter_px)
 
+    @override
     def draw(self, img:np.ndarray) -> np.ndarray:
         COL = (0,255,255)
         ALPHA = 0.6
@@ -311,6 +390,7 @@ class FigLine(Fig):
 
         return img
 
+    @override
     def __str__(self) -> str:
         val  = f"{super().__str__()},a={self.a_},b={self.b_},c={self.c_}"
         val += f",inlier_bbox=[(,{self.inlier_bbox_[0]},{self.inlier_bbox_[1]},)-"
@@ -319,6 +399,8 @@ class FigLine(Fig):
         return val
 
 class FigCircle(Fig):
+    """円モデル（x^2 + y^2 + ax + by + c = 0）
+    """
 
     def __init__(self, cfg:Dict[str,Any]):
         super().__init__(cfg)
@@ -330,17 +412,30 @@ class FigCircle(Fig):
 
         # 中心center、半径r
         self.center_ = np.array([0,0])
-        self.r_ = 0
+        self.r_      = 0
 
         self.inlier_dense_th_ = float(cfg["INLIER_CIRCLE_DENSE_TH"])
-        self.min_r_th_ = int(cfg["CIRCLE_MIN_R_TH"])
+        self.min_r_th_        = int(cfg["CIRCLE_MIN_R_TH"])
         return
 
+    @override
     def choiseRandomPixels(self, pixels:np.ndarray) -> np.ndarray:
-        # pixelsの中からランダムに3点を選ぶ（重複禁止）
+        """円作成に必要な点(3点)をランダムに抽出（重複禁止）
+        Args:
+            pixels (np.ndarray): [in] 点群 [[x0,y0][x1,y1],...]
+        Returns:
+            np.ndarray: [out] 円作成に必要な点(3点) [[x0,y0][x1,y1][x2,y2]]
+        """
         return pixels[np.random.choice(len(pixels), 3, False)]
 
+    @override
     def isEnableCreate(self, px:np.ndarray) -> bool:
+        """円を作成可能かどうかを判定
+        Args:
+            px (np.ndarray): [in] 円作成に必要な点(3点) [[x0,y0][x1,y1][x2,y2]]
+        Returns:
+            bool: [out] 判定結果(True:可能、False:不可能)
+        """
         is_create = True
 
         # 3点が一直線上にあるかどうかを判定
@@ -359,7 +454,12 @@ class FigCircle(Fig):
 
         return is_create
 
+    @override
     def create(self, px:np.ndarray):
+        """円作成 (x^2 + y^2 + ax + by + c = 0)
+        Args:
+            px (np.ndarray): [in] 円作成に必要な点(3点) [[x0,y0][x1,y1][x2,y2]]
+        """
         pxf = px.astype(float)
         (x0,y0) = pxf[0]
         (x1,y1) = pxf[1]
@@ -398,6 +498,13 @@ class FigCircle(Fig):
 
     @staticmethod
     def calcDensity(num_inlier:int, r:float) -> float:
+        """円の密度算出
+        Args:
+            num_inlier (int): [in] 円を構成する点群の数(inlier)
+            r (float):        [in] 円の半径
+        Returns:
+            float: [out] 密度
+        """
         density = 0.0
         if r > 0.0:
             len_arc = 2.0 * math.pi * r
@@ -405,7 +512,19 @@ class FigCircle(Fig):
 
         return density
 
+    @override
     def countInlier(self, pixels:np.ndarray, dist_th:float) -> int:
+        """円周辺の点(inlier)の数をカウント
+        Args:
+            pixels (np.ndarray): [in] 点群 [[x0,y0][x1,y1]...]
+            dist_th (float): [in] 距離閾値[pixel]
+        Returns:
+            int: [out] 円周辺の点(inlier)の数
+        Notes:
+            以下も実行
+            
+            * 密度算出（密度:inlier点数/円周長）
+        """
         self.num_inlier_ = 0
 
         if self.is_valid_ == True:
@@ -431,19 +550,31 @@ class FigCircle(Fig):
 
             else:
                 self.num_inlier_ = 0
-                self.density_ = 0.0
+                self.density_    = 0.0
 
             if self.num_inlier_ == 0:
                 self.inlier_pixels_ = None
-                self.inlier_bbox_ = None
+                self.inlier_bbox_   = None
 
         return self.num_inlier_
 
+    @override
     def filteredByInlierPixels(self) -> bool:
+        """inlier点群の密度等で円をフィルタリング（有効、無効判定）
+        Returns:
+            bool: [out] True:有効、False:無効
+        """
         self.is_valid_ = self.density_ > self.inlier_dense_th_
         return self.is_valid_
 
+    @override
     def erasePixels(self, img:np.ndarray) -> np.ndarray:
+        """エッジ画像から、円周辺の点群(inlier)を削除
+        Args:
+            img (np.ndarray): [in] エッジ画像
+        Returns:
+            np.ndarray: [out] 削除後のエッジ画像
+        """
         COL = (0,0,0)
         MARGIN = 2
         if (self.is_valid_ == True):
@@ -455,6 +586,7 @@ class FigCircle(Fig):
 
         return img
 
+    @override
     def draw(self, img:np.ndarray) -> np.ndarray:
         COL = (0,255,0)
         ALPHA = 0.6
@@ -468,6 +600,7 @@ class FigCircle(Fig):
 
         return img
 
+    @override
     def __str__(self) -> str:
         val  = f"{super().__str__()},a={self.a_},b={self.b_},c={self.c_}"
         val += f",center=({self.center_[X]},{self.center_[Y]})"

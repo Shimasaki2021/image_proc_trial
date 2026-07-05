@@ -10,10 +10,18 @@
 
 std::mt19937 rand_gen;
 
-void extractObjectRANSAC(const CvPointList &edge_pixels, 
-                         FigType &target_obj_type, 
+/**
+ * @brief エッジ点群から直線 or 円を1つ検出(RANSAC)
+ * 
+ * @param edge_pixels     [in]  エッジ点群 [[x0,y0][x1,y1],...]
+ * @param target_obj_type [in]  検出するモデル種別（直線 or 円）
+ * @param det_obj         [out] 検出結果（1つ）（直線 or 円）
+ * @param cfg             [in]  config
+ */
+void extractObjectRANSAC(const CvPointList    &edge_pixels, 
+                         FigType              &target_obj_type, 
                          std::shared_ptr<Fig> &det_obj,
-                         CfgType &cfg)
+                         CfgType              &cfg)
 {
     std::shared_ptr<Fig> target_fig;
     int num_iter;
@@ -32,6 +40,7 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
         det_obj    = std::make_shared<FigCircle>(cfg);
     }
 
+    // 繰り返し回数＝エッジ点群数の定数倍
     num_iter = (int)((float)edge_pixels.size() * strtof(cfg["RANSAC_NUM_ITER_PER_EDGE"].c_str(), NULL));
 
     num_max_inlier = 0;
@@ -41,23 +50,27 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     while(count_iter < num_iter)
     {
         CvPointList choise_pixels;
-        bool is_valid;
+        bool        is_valid;
 
         target_fig->reset();
 
-        // エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
+        // 観測データのサンプリング
+        //  エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
         target_fig->choiseRandomPixels(edge_pixels, choise_pixels);
 
         if(target_fig->isEnableCreate(choise_pixels) == true)
         {
-            // 抽出した点から直線／円を作成
+            // モデル作成（抽出した点から直線／円を作成）
             target_fig->create(choise_pixels);
 
-            // 作成した直線／円周上の点の数（inlier）をカウント
+            // モデル評価
+            //  作成した直線／円周上の点の数（inlier）をカウント、密度算出
             num_inlier = target_fig->countInlier(edge_pixels, target_fig->dist_th_);
 
-            // inlier点群の特徴抽出（外接矩形）、フィルタリング
+            // 外接矩形算出
             target_fig->calcInlierBBox();
+
+            // 最良モデルの採用
             is_valid = target_fig->filteredByInlierPixels();
 
             if((is_valid == true) && (num_inlier > num_max_inlier))
@@ -74,20 +87,28 @@ void extractObjectRANSAC(const CvPointList &edge_pixels,
     return;
 }
 
-void extractObjects(cv::Mat &img_edge, 
-                    FigList &det_objs, 
-                    CfgType &cfg,
+/**
+ * @brief 複数の直線／円検出（１つずつ検出）
+ * 
+ * @param img_edge  [in]  エッジ画像 ※変更あり
+ * @param det_objs  [out] 検出結果（複数）（直線 or 円）
+ * @param cfg       [in]  config
+ * @param dbg       [in]  デバッグ
+ */
+void extractObjects(cv::Mat  &img_edge, 
+                    FigList  &det_objs, 
+                    CfgType  &cfg,
                     DebugOut &dbg)
 {
-    FigType target_obj_type;
+    FigType     target_obj_type;
     CvPointList edge_pixels;
 
     det_objs.clear();
 
     while(false == target_obj_type.isNone())
     {
-        int len_edge_pixels;
         std::shared_ptr<Fig> det_obj(nullptr);
+        int  len_edge_pixels;
         char fname_img_edge[128];
 
         // エッジ画像からエッジ点群を抽出
@@ -105,10 +126,9 @@ void extractObjects(cv::Mat &img_edge,
         if((det_obj != nullptr) && (det_obj->is_valid_ == true))
         {
             // [検出できた場合] 
+            //   検出した直線／円のモデル周辺の点群を消去し、同じ種別の図形検出を継続
             det_objs.push_back(det_obj);
 
-            // 検出した直線／円に含まれるエッジ点(inlier点)を削除し、
-            // 同じ種別の図形検出を継続
             det_obj->erasePixels(img_edge);
 
             dbg.printLogLine("[%lu] detect %s",
@@ -130,27 +150,43 @@ void extractObjects(cv::Mat &img_edge,
     return;
 }
 
+/**
+ * @brief 画素の中央値を算出
+ * 
+ * @param src [in]  画像(grayscale)
+ * @return    [out] 画素の中央値
+ */
 double calculateMedian(const cv::Mat& src) 
 {
-    cv::Mat flat;
-    src.reshape(1, 1).copyTo(flat); // 1次元配列に変換
     std::vector<int> vec;
+    cv::Mat          flat;
+
+    src.reshape(1, 1).copyTo(flat); // 1次元配列に変換
     flat.copyTo(vec);
     std::sort(vec.begin(), vec.end()); // ソート
 
     return vec[vec.size() / 2]; // 中央値を取得
 }
 
+/**
+ * @brief エッジ検出(Canny法)
+ * 
+ * @param img_in_g [in]  入力画像(grayscale)
+ * @param img_edge [out] エッジ画像(grayscale(2値))
+ * @param dbg      [in]  デバッグ
+ */
 void extractEdge(const cv::Mat &img_in_g, cv::Mat &img_edge, DebugOut &dbg)
 {
-    // https://qiita.com/kotai2003/items/662c33c15915f2a8517e
     cv::Scalar mean_val, sigma_val;
     double med_val, sigma;
-    int min_val, max_val;
+    int    min_val, max_val;
 
+    // Canny法を実行
+    //  閾値(下限,上限)は、画素値の中央値±標準偏差σ
+    //  https://qiita.com/kotai2003/items/662c33c15915f2a8517e
     med_val = calculateMedian(img_in_g);
     cv::meanStdDev(img_in_g, mean_val, sigma_val);
-    sigma = sigma_val[0] / 255.0;
+    sigma   = sigma_val[0] / 255.0;
     min_val = (int)std::max(0.0,   (1.0 - sigma) * med_val);
     max_val = (int)std::min(255.0, (1.0 + sigma) * med_val);
 
@@ -200,23 +236,23 @@ int main(int argc, char *argv[])
     }
     else
     {
-        const char *img_fpath;
-        cv::Mat img_in, img_in_g, img_edge;
         std::filesystem::path fpath;
+        const char *img_fpath;
         std::string img_fname, img_fname_base;
-        FigList det_objs;
+        cv::Mat     img_in, img_in_g, img_edge;
+        FigList     det_objs;
         std::chrono::system_clock::time_point time_s, time_e;
         double time_elapsed;
-        int random_seed;
+        int    random_seed;
         
         random_seed = strtol(cfg["RANDOM_SEED"].c_str(), NULL, 10);
-        rand_gen = std::mt19937(random_seed); // 乱数シード固定
+        rand_gen    = std::mt19937(random_seed); // 乱数シード固定
 
         img_fpath = argv[1];
-        img_in = cv::imread(img_fpath);
+        img_in    = cv::imread(img_fpath);
 
-        fpath = std::filesystem::path(img_fpath);
-        img_fname = fpath.filename().string();
+        fpath          = std::filesystem::path(img_fpath);
+        img_fname      = fpath.filename().string();
         img_fname_base = fpath.stem().string();
 
         DebugOut dbg(cfg["OUTPUT_DIR"].c_str(), img_fname_base.c_str());

@@ -8,8 +8,24 @@ from typing import List,Dict,Tuple,Any
 
 from fig import FigType, Fig, FigLine, FigCircle
 from debug import DebugOut
+from main import extractEdge
 
-def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th=0.45, top_k=-1) -> Tuple[np.ndarray, int]:
+def nmSuppression(boxes:np.ndarray, 
+                  scores:np.ndarray, 
+                  iou_th=0.45, 
+                  top_k=-1) -> Tuple[np.ndarray, int]:
+    """重複物体の削除
+    Args:
+        boxes (np.ndarray):       [in] 物体毎の外接矩形 [[xmin,ymin,xmax,ymax][xmin,ymin,xmax,ymax]..]
+        scores (np.ndarray):      [in] 物体毎のscore（ここではinlier点数）
+        iou_th (float, optional): [in] 外接矩形の重なり(IoU)閾値. Defaults to 0.45.
+        top_k (int, optional):    [in] 削除後の物体数上限(-1:上限なし). Defaults to -1.
+
+    Returns:
+        Tuple[np.ndarray, int]: 
+          - [out] 削除後の物体index [idx0,idx1,..]
+          - [out] 削除後の物体数
+    """
 
     if len(boxes) == 0:
         return (np.array([], dtype=np.int64), 0)
@@ -58,7 +74,17 @@ def nmSuppression(boxes:np.ndarray, scores:np.ndarray, iou_th=0.45, top_k=-1) ->
 
     return (keep[:count], count)
 
-def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,Any]) -> List[Fig]:
+def extractObjectRANSAC(edge_pixels:np.ndarray, 
+                        obj_type:FigType, 
+                        cfg:Dict[str,Any]) -> List[Fig]:
+    """エッジ点群から直線 or 円を複数検出(RANSAC)
+    Args:
+        edge_pixels (np.ndarray): [in] エッジ点群 [[x0,y0][x1,y1],...]
+        obj_type (FigType):       [in] 検出するモデル種別（直線 or 円）
+        cfg (Dict[str,Any]):      [in] config
+    Returns:
+        List[Fig]: [out] 検出結果（複数）（直線 or 円）
+    """
 
     det_objs:List[Fig] = []
 
@@ -77,19 +103,23 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
         target_fig.reset()
 
-        # エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
+        # 観測データのサンプリング
+        #   エッジ点群から、直線／円の作成に必要な点（直線なら2点、円なら3点）をランダムに抽出
         choise_pixels = target_fig.choiseRandomPixels(edge_pixels)
 
         if target_fig.isEnableCreate(choise_pixels) == True:
 
-            # 抽出した点から直線／円を作成
+            # モデル作成（抽出した点から直線／円を作成）
             target_fig.create(choise_pixels)
 
-            # 作成した直線／円周上の点の数（inlier）をカウント
+            # モデル評価
+            #   作成した直線／円周上の点の数（inlier）をカウント、密度算出
             target_fig.countInlier(edge_pixels, target_fig.dist_th_)
 
-            # inlier点群の特徴抽出（外接矩形）、フィルタリング
+            # 外接矩形算出
             target_fig.calcInlierBBox()
+
+            # 最良モデルの採用
             is_valid = target_fig.filteredByInlierPixels()
 
             if is_valid == True:
@@ -97,11 +127,14 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
     
             count_iter += 1
 
-    # 外接矩形が重複するものは、一番inlier数が多いもののみ残す（Non-maximum supression）
-    #   inlier数が少ない（上位 TOP_K 外）結果もここで削除される（TOP_K=-1とすればこの削除機能を無効化可能）
+    # 重複物体の削除（Non-maximum supression）
     TOP_K = -1
-    boxes = [[det_obj.inlier_bbox_[0], det_obj.inlier_bbox_[1], det_obj.inlier_bbox_[2], det_obj.inlier_bbox_[3]] 
+    boxes = [[det_obj.inlier_bbox_[0], \
+              det_obj.inlier_bbox_[1], \
+              det_obj.inlier_bbox_[2], \
+              det_obj.inlier_bbox_[3]] 
              for det_obj in det_objs]
+
     scores = [det_obj.num_inlier_ for det_obj in det_objs]
 
     (sup_idx , _) = nmSuppression(np.array(boxes), 
@@ -114,7 +147,18 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
     return det_objs_sup
 
 
-def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List[Fig]:
+def extractObjects(img_edge:np.ndarray, 
+                   dbg:DebugOut, 
+                   cfg:Dict[str,Any]) -> List[Fig]:
+    """複数の直線／円検出（複数まとめて検出）
+    Args:
+        img_edge (np.ndarray): [in] エッジ画像
+        dbg (DebugOut):        [in] デバッグ
+        cfg (Dict[str,Any]):   [in] config
+
+    Returns:
+        List[Fig]: [out] 検出結果（複数）（直線 or 円）
+    """
 
     det_objs_all = []
 
@@ -135,9 +179,9 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
 
         if len(det_objs) > 0:
             # [検出できた場合] 
+            #   検出した直線／円のモデル周辺の点群を消去
             det_objs_all += det_objs
 
-            # 検出した直線／円に含まれるエッジ点(inlier点)を削除
             for det_obj in det_objs:
                 img_edge = det_obj.erasePixels(img_edge)
 
@@ -148,22 +192,6 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
         target_obj_type.next()
 
     return det_objs_all
-
-
-def extractEdge(img_in:np.ndarray, dbg:DebugOut) -> np.ndarray:
-    # https://qiita.com/kotai2003/items/662c33c15915f2a8517e
-    med_val = np.median(img_in)
-    # sigma = 0.33
-    sigma = np.std(img_in) / 255.0 # 画素値の標準偏差を0～1に正規化
-    min_val = int(max(  0, (1.0 - sigma) * med_val))
-    max_val = int(min(255, (1.0 + sigma) * med_val))
-    img_edge = cv2.Canny(img_in, threshold1 = min_val, threshold2 = max_val)
-
-    dbg.printLogLine(f"img_in.shape = {img_in.shape}")
-    dbg.printLogLine(f"img_out({img_edge.shape} {img_edge.dtype}) = cv2.Canny(img_in, {min_val}, {max_val})")
-
-    return img_edge
-
 
 def main(img_fpath:str, cfg:Dict[str,Any]):
 

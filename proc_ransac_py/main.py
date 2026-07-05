@@ -10,19 +10,30 @@ from fig import FigType, Fig, FigLine, FigCircle
 from debug import DebugOut
 
 
-def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,Any]) -> Fig:
+def extractObjectRANSAC(edge_pixels:np.ndarray, 
+                        obj_type:FigType, 
+                        cfg:Dict[str,Any]) -> Fig:
+    """エッジ点群から直線 or 円を1つ検出(RANSAC)
+    Args:
+        edge_pixels (np.ndarray): [in] エッジ点群 [[x0,y0][x1,y1],...]
+        obj_type (FigType):       [in] 検出するモデル種別（直線 or 円）
+        cfg (Dict[str,Any]):      [in] config
+    Returns:
+        Fig: [out] 検出結果（1つ）（直線 or 円）
+    """
 
     if obj_type.figtype_ == FigType.Def.FIGTYPE_LINE_:
         target_fig = FigLine(cfg)
     else:
         target_fig = FigCircle(cfg)
 
+    # 繰り返し回数＝エッジ点群数の定数倍
     num_iter = int(float(len(edge_pixels)) * float(cfg["RANSAC_NUM_ITER_PER_EDGE"]))
     # print(f"num_iter = {num_iter}")
 
+    best_fig       = copy.deepcopy(target_fig)
     num_max_inlier = 0
-    best_fig = copy.deepcopy(target_fig)
-    count_iter = 0
+    count_iter     = 0
 
     while count_iter < num_iter:
 
@@ -39,8 +50,9 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
             # モデル評価
             #   作成した直線／円周上の点の数（inlier）をカウント、密度算出
-            #   inlier点群の特徴抽出（外接矩形）も実行
             num_inlier = target_fig.countInlier(edge_pixels, target_fig.dist_th_)
+
+            # 外接矩形算出
             target_fig.calcInlierBBox()
 
             # 最良モデルの採用
@@ -48,7 +60,7 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
 
             if (is_valid == True) and (num_inlier > num_max_inlier):
                 num_max_inlier = num_inlier
-                best_fig = copy.deepcopy(target_fig)
+                best_fig       = copy.deepcopy(target_fig)
     
             count_iter += 1
 
@@ -56,7 +68,18 @@ def extractObjectRANSAC(edge_pixels:np.ndarray, obj_type:FigType, cfg:Dict[str,A
     return best_fig
 
 
-def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List[Fig]:
+def extractObjects(img_edge:np.ndarray, 
+                   dbg:DebugOut, 
+                   cfg:Dict[str,Any]) -> List[Fig]:
+    """複数の直線／円検出（１つずつ検出）
+    Args:
+        img_edge (np.ndarray): [in] エッジ画像 ※変更あり
+        dbg (DebugOut):        [in] デバッグ
+        cfg (Dict[str,Any]):   [in] config
+
+    Returns:
+        List[Fig]: [out] 検出結果（複数）（直線 or 円）
+    """
 
     det_objs = []
 
@@ -78,10 +101,9 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
 
         if det_obj.is_valid_ == True:
             # [検出できた場合] 
+            #   検出した直線／円のモデル周辺の点群を消去し、同じ種別の図形検出を継続
             det_objs.append(det_obj)
 
-            # 検出した直線／円に含まれるエッジ点(inlier点)を削除し、
-            # 同じ種別の図形検出を継続
             img_edge = det_obj.erasePixels(img_edge)
 
             dbg.printLogLine(f"[{len(det_objs)}] detect {target_obj_type}")
@@ -96,12 +118,20 @@ def extractObjects(img_edge:np.ndarray, dbg:DebugOut, cfg:Dict[str,Any]) -> List
 
 
 def extractEdge(img_in:np.ndarray, dbg:DebugOut) -> np.ndarray:
-    # https://qiita.com/kotai2003/items/662c33c15915f2a8517e
-    med_val = np.median(img_in)
-    # sigma = 0.33
-    sigma = np.std(img_in) / 255.0 # 画素値の標準偏差を0～1に正規化
-    min_val = int(max(  0, (1.0 - sigma) * med_val))
-    max_val = int(min(255, (1.0 + sigma) * med_val))
+    """ エッジ検出(Canny法)
+    Args:
+        img_in (np.ndarray): [in] 入力画像(grayscale)
+        dbg (DebugOut):      [in] デバッグ
+    Returns:
+        np.ndarray: [out] エッジ画像(grayscale(2値))
+    """
+    # Canny法を実行
+    #   閾値(下限,上限)は、画素値の中央値±標準偏差σ
+    #   https://qiita.com/kotai2003/items/662c33c15915f2a8517e
+    med_val  = np.median(img_in)
+    sigma    = np.std(img_in) / 255.0 # 画素値の標準偏差を0～1に正規化
+    min_val  = int(max(  0, (1.0 - sigma) * med_val))
+    max_val  = int(min(255, (1.0 + sigma) * med_val))
     img_edge = cv2.Canny(img_in, threshold1 = min_val, threshold2 = max_val)
 
     dbg.printLogLine(f"img_in.shape = {img_in.shape}")
@@ -118,7 +148,7 @@ def main(img_fpath:str, cfg:Dict[str,Any]):
         # 乱数シード固定
         np.random.seed(cfg["RANDOM_SEED"])
 
-        img_fname = os.path.basename(img_fpath)
+        img_fname      = os.path.basename(img_fpath)
         img_fname_base = os.path.splitext(img_fname)[0]
 
         dbg = DebugOut(cfg["OUTPUT_DIR"], img_fname_base)

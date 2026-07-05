@@ -23,7 +23,7 @@ include_directories(${OpenCV_INCLUDE_DIRS}
 # 実行ファイルの追加
 add_executable(proc_ransac_c.elf 
                src/main.cpp
-            #    src/main2.cpp
+               # src/main2.cpp
                src/fig.cpp
                src/debug.cpp)
 

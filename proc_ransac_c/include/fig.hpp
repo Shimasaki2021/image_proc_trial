@@ -126,6 +126,10 @@ public:
 
 };
 
+/**
+ * @brief モデル（直線 or 円）
+ * 
+ */
 class Fig
 {
 public:
@@ -205,6 +209,10 @@ public:
 
 };
 
+/**
+ * @brief 直線モデル（ax+by+c=0）
+ * 
+ */
 class FigLine : public Fig
 {
 public:
@@ -256,6 +264,10 @@ public:
     int line_min_len_th_;
 };
 
+/**
+ * @brief 円モデル（x^2 + y^2 + ax + by + c = 0）
+ * 
+ */
 class FigCircle : public Fig
 {
 public:
